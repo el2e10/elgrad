@@ -1,53 +1,87 @@
 from typing import Union, List, Tuple
 
-import numpy as np #type: ignore
+import numpy as np  # type: ignore
+
 
 class Tensor:
-    def __init__(self, data):
-        self.data = np.array(data)
-        self.shape = []
-        self._get_shape(data)
+    def __init__(self, data, children=()):
+        self.data = np.array(data) if hasattr(data, "__len__") else np.array([data])
+        self.shape = self.data.shape
+        self.grad = 0.0
+        self.children = children 
+        self._backward = lambda: None
         self._current_index = 0
 
     def __getitem__(self, indices: Union[List, int, Tuple, slice]):
-       return self.data[indices]
-
-    def __iter__(self):
-        self.current_index = 0
-        return self
-
-    def __next__(self):
-        if self.current_index > self.shape[0] - 1:
-            raise StopIteration
-
-        tensor = Tensor(self.data[self.current_index])
-        self.current_index += 1
-        return tensor
+        return self.data[indices]
 
     def __add__(self, other):
         assert self.shape == other.shape, "Different shape"
-        result = self.data + other.data
+        output = Tensor(self.data + other.data, (self, other))
 
-        return Tensor(result)
+        def backward():
+            self.grad += 1 * output.grad
+            other.grad += 1 * self.grad
+
+        output._backward = backward
+        return output
 
     def __mul__(self, other):
-        return Tensor(np.matmul(self.data, other.data))
+        print(self.shape, other.shape)
+        output = Tensor(np.matmul(self.data, other.data), (self, other))
 
-    def _get_shape(self, x):
-        if not hasattr(x, "__len__"):
-            return
-        else:
-            self.shape.append(len(x))
-            return self._get_shape(x[0])
+        def backward():
+            self.grad += other.data * output.grad
+            other.grad += self.data * output.grad
+
+        output._backward = backward
+
+        return output
 
     def __repr__(self) -> str:
-        return f"Tensor(data={self.data}, shape={self.shape})"
+        return f"Tensor(data={self.data}, grad={self.grad}, shape={self.shape})"
+
+    def sum(self):
+        output = Tensor(self.data.sum(), children=(self,))
+        def backward():
+            self.grad += 1 * output.grad
+
+        output._backward = backward
+
+        return output
+    
+
+
+    def backward(self):
+        graph = []
+        visited = set()
+
+        def create_graph(root: Tensor):
+            if root not in visited:
+                visited.add(root)
+                for child in root.children:
+                    create_graph(child)
+                graph.append(root)
+
+        create_graph(self)
+        self.grad = 1.0
+
+        for child in reversed(graph):
+            child._backward()
 
 
 if __name__ == "__main__":
-    a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    b = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-    c = Tensor([[1, 2], [3, 4], [5, 6]])
-    
-    print(a * c)
+    a = Tensor([1, 2, 3])
+    b = Tensor([4, 2, 3])
+    c = Tensor([8, 2, 4])
 
+    d = a + b
+    f = c * d
+
+    e = f.sum()
+
+    # print(e)
+
+    e.backward()
+    
+    print(a, b, c)
