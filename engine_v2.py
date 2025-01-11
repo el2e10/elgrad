@@ -21,7 +21,7 @@ class Tensor:
 
         def backward():
             self.grad += 1 * output.grad
-            other.grad += 1 * self.grad
+            other.grad += 1 * output.grad
 
         output._backward = backward
         return output
@@ -71,17 +71,14 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    a = Tensor([1, 2, 3])
-    b = Tensor([4, 2, 3])
-    c = Tensor([8, 2, 4])
+    a = Tensor([[1, 2, 3], [4, 5, 7]])
+    b = Tensor([[4, 2, 3], [8, 3, 2]])
+    c = a + b
+    d = c.sum()
 
-    d = a + b
-    f = c * d
+    # print(d)
 
-    e = f.sum()
+    d.backward()
 
-    # print(e)
-
-    e.backward()
-    
-    print(a, b, c)
+    print(a, b)
+    # print(d)
