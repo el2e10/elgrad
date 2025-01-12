@@ -74,6 +74,9 @@ class Tensor:
     def __getitem__(self, indices: Union[List, int, Tuple, slice]):
         return self.data[indices]
 
+    def __radd__(self, other):
+        return self.__add__(other)
+
     def __add__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
         # The broadcast method will raise a broadcast exception if it's not broadcastable
@@ -82,26 +85,48 @@ class Tensor:
         output = Tensor(self.data + other.data, (self, other))
 
         def backward():
+            print(1 * output.grad)
             self.grad += 1 * output.grad
             other.grad += 1 * output.grad
 
         output._backward = backward
         return output
 
-    def __mul__(self, other):
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __matmul__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
 
         # Checking if the mat mul can be performed
         # Refer for more info https://data-apis.org/array-api/latest/API_specification/generated/array_api.matmul.html#array_api.matmul
         assert self.shape[-1] == other.shape[-min(other.ndim, 2)], "Invalid dimension cannot do dot product"
         
-        
-        print(self.data.shape, other.data.shape)
         output = Tensor(np.matmul(self.data, other.data), children=(self, other))
 
         def backward():
-            self.grad += other.data * output.grad
-            other.grad += self.data * output.grad
+            tmp = other.data * output.grad
+            self.grad = Tensor.fill_empty(self.grad, tmp.shape) + tmp
+            tmp = other.data * output.grad
+            other.grad = Tensor.fill_empty(other.grad, tmp.shape) + tmp
+
+        output._backward = backward
+
+        return output
+
+    def __mul__(self, other):
+        other = Tensor.fill_empty(Tensor(other), self.shape, fill_value=other) if isinstance(other, (int, float)) else other
+
+        assert other.shape == self.shape, "Cannot perform matrix multiplication"
+
+        output = Tensor(self.data * other.data)
+
+        def backward():
+            tmp = other.data * output.grad
+            self.grad = Tensor.fill_empty(self.grad, tmp.shape) + tmp
+            tmp = other.data * output.grad
+            other.grad = Tensor.fill_empty(other.grad, tmp.shape) + tmp
 
         output._backward = backward
 
@@ -114,11 +139,20 @@ class Tensor:
     def sum(self):
         output = Tensor(self.data.sum(), children=(self,))
         def backward():
-            self.grad += 1 * output.grad
+            self.grad = Tensor.fill_empty(self.grad, self.shape) + Tensor.ones(self.shape)
 
         output._backward = backward
 
         return output
+
+    @staticmethod
+    def fill_empty(tensor, target_shape, fill_value:Union[int, float]=0.0):
+        tensor = Tensor(tensor) if not isinstance(tensor, Tensor) else tensor
+        assert tensor.ndim == len(target_shape), "Can't pad this tensor"
+        pad = [(0, abs(x - y)) for x, y in zip(tensor.shape, target_shape)]
+        
+        padded_array = np.pad(tensor.data, pad, constant_values=fill_value)
+        return Tensor(padded_array)
 
     
     def backward(self):
@@ -141,15 +175,15 @@ class Tensor:
 
 if __name__ == "__main__":
 
-    a = Tensor([[1, 2, 3], [4, 5, 7]], require_grad=True)
-    b = Tensor([[4, 2, 3], [8, 3, 2], [1, 2, 4]], require_grad=True)
+    a = Tensor([[1, 2, 3], [2, 3, 4]], require_grad=True)
+    b = Tensor([4, 2, 3], require_grad=True)
+    print(a, b)
 
-    c = a * b
-
+    c = a @ b
+    print(c)
     # d = c.sum()
     #
     # d.backward()
-    #
     # print(a, b)
-
+    
 
