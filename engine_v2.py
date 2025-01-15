@@ -87,8 +87,8 @@ class Tensor:
         output = Tensor(self.data + other.data, (self, other))
 
         def backward():
-            self.grad += 1 * output.grad
-            other.grad += 1 * output.grad
+            self.grad += Tensor._sum_if_broadcasting_occured(output.grad, self.grad) 
+            other.grad += Tensor._sum_if_broadcasting_occured(output.grad, other.grad)
 
         output._backward = backward
         return output
@@ -211,10 +211,10 @@ class Tensor:
 if __name__ == "__main__":
 
 
-    a = Tensor([[2, 3, 4], [4, 2, 3], [1, 2, 3]], require_grad=True, label="A")
-    b = Tensor([[4, 2, 3], [1, 2, 3], [2, 3, 4]], require_grad=True, label="B")
+    a = Tensor([[2, 3, 4], [1, 2, 3]], require_grad=True, label="A")
+    b = Tensor([4, 2, 3], require_grad=True, label="B")
 
-    c = a * b
+    c = a + b
     d = c.sum()
 
     d.backward()
