@@ -1,4 +1,5 @@
 from typing import Union, List, Tuple
+from functools import reduce
 
 import numpy as np  # type: ignore
 
@@ -10,13 +11,14 @@ class BroadcastError(Exception):
 
 
 class Tensor:
-    def __init__(self, data, children=(), require_grad=False):
+    def __init__(self, data, children=(), require_grad=False, label=""):
         self.data = np.array(data) if hasattr(data, "__len__") else np.array([data])
         self.shape = self.data.shape
         self.ndim = len(self.shape)
         self.require_grad = require_grad
         self.grad = Tensor.zeros(self.shape) if require_grad else 0.0
         self.children = children 
+        self.label = label
         self._backward = lambda: None
         self._current_index = 0
 
@@ -31,7 +33,7 @@ class Tensor:
 
 
     @staticmethod
-    def broadcast(x, y):
+    def can_broadcast(x, y):
         """Return the shape of the broadcast array if it's possible or raise a BroadcastError
 
         x -- Tensor
@@ -80,12 +82,11 @@ class Tensor:
     def __add__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
         # The broadcast method will raise a broadcast exception if it's not broadcastable
-        Tensor.broadcast(self.data, other.data)
+        Tensor.can_broadcast(self.data, other.data)
 
         output = Tensor(self.data + other.data, (self, other))
 
         def backward():
-            print(1 * output.grad)
             self.grad += 1 * output.grad
             other.grad += 1 * output.grad
 
@@ -118,15 +119,15 @@ class Tensor:
     def __mul__(self, other):
         other = Tensor.fill_empty(Tensor(other), self.shape, fill_value=other) if isinstance(other, (int, float)) else other
 
-        assert other.shape == self.shape, "Cannot perform matrix multiplication"
+        # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
+        Tensor.can_broadcast(self, other)
 
-        output = Tensor(self.data * other.data)
+        output = Tensor(self.data * other.data, label="M.out")
 
         def backward():
-            tmp = other.data * output.grad
-            self.grad = Tensor.fill_empty(self.grad, tmp.shape) + tmp
-            tmp = other.data * output.grad
-            other.grad = Tensor.fill_empty(other.grad, tmp.shape) + tmp
+            
+            self.grad += Tensor._sum_if_broadcasting_occured(other * output.grad, self.grad)
+            other.grad += Tensor._sum_if_broadcasting_occured(self * output.grad, other.grad)
 
         output._backward = backward
 
@@ -134,22 +135,56 @@ class Tensor:
 
     def __repr__(self) -> str:
         grad = self.grad.data if(isinstance(self.grad, Tensor)) else self.grad
-        return f"Tensor(data={self.data}, grad={grad}, shape={self.shape})\n"
+        return f"\nTensor(data={self.data}, grad={grad}, shape={self.shape}, label={self.label})"
 
-    def sum(self):
-        output = Tensor(self.data.sum(), children=(self,))
+    def sum(self, axis=None):
+        output = Tensor(self.data.sum(axis), children=(self,))
         def backward():
-            self.grad = Tensor.fill_empty(self.grad, self.shape) + Tensor.ones(self.shape)
+            padd_shape = reduce(lambda x, y: x * y, self.shape) if axis is None else self.shape
+            result = Tensor.fill_empty(self.grad, padd_shape) + Tensor.ones(padd_shape)
+            result = Tensor.reshape(result, self.shape)
+            # print(result)
+            self.grad = result
 
         output._backward = backward
 
         return output
 
     @staticmethod
+    def reshape(tensor, shape):
+        data = tensor.data
+        return Tensor(np.reshape(data, shape))
+
+    @staticmethod
+    def _sum_if_broadcasting_occured(x, y):
+        x_shape, y_shape = x.shape, y.shape
+        x_dim, y_dim = len(x.shape), len(y.shape)
+        difference = abs(x_dim - y_dim)
+        broadcast_axis = []
+
+        if(x_dim > y_dim):
+            y_shape = (1,) * difference + y_shape
+        elif(x_dim < y_dim):
+            x_shape = (1,) * difference + x_shape
+        else:
+            return x
+
+        # broadcast_axis = tuple([abs(x - y) for x, y in zip(x_shape, y_shape)])
+        i = 0
+        for k, j in zip(x_shape, y_shape):
+            if(k != j):
+                broadcast_axis.append(i)
+            i += 1
+        return x.sum(axis=tuple(broadcast_axis))
+
+    @staticmethod
     def fill_empty(tensor, target_shape, fill_value:Union[int, float]=0.0):
         tensor = Tensor(tensor) if not isinstance(tensor, Tensor) else tensor
-        assert tensor.ndim == len(target_shape), "Can't pad this tensor"
-        pad = [(0, abs(x - y)) for x, y in zip(tensor.shape, target_shape)]
+        if(isinstance(target_shape, int)):
+            pad = [0,  target_shape - tensor.shape[0]]
+        else:
+            assert tensor.ndim == len(target_shape), "Can't pad this tensor"
+            pad = [(0, abs(x - y)) for x, y in zip(tensor.shape, target_shape)] #type: ignore
         
         padded_array = np.pad(tensor.data, pad, constant_values=fill_value)
         return Tensor(padded_array)
@@ -175,15 +210,13 @@ class Tensor:
 
 if __name__ == "__main__":
 
-    a = Tensor([[1, 2, 3], [2, 3, 4]], require_grad=True)
-    b = Tensor([4, 2, 3], require_grad=True)
-    print(a, b)
 
-    c = a @ b
-    print(c)
-    # d = c.sum()
-    #
-    # d.backward()
-    # print(a, b)
-    
+    a = Tensor([[2, 3, 4], [4, 2, 3], [1, 2, 3]], require_grad=True, label="A")
+    b = Tensor([[4, 2, 3], [1, 2, 3], [2, 3, 4]], require_grad=True, label="B")
+
+    c = a * b
+    d = c.sum()
+
+    d.backward()
+    print(a, b)
 
