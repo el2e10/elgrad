@@ -93,6 +93,11 @@ class Tensor:
         output._backward = backward
         return output
 
+    def __rsub__(self, other):
+        return self.__sub__(other)
+
+    def __sub__(self, other):
+        return self.__add__(-1 * other)
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -140,11 +145,7 @@ class Tensor:
     def sum(self, axis=None):
         output = Tensor(self.data.sum(axis), children=(self,))
         def backward():
-            padd_shape = reduce(lambda x, y: x * y, self.shape) if axis is None else self.shape
-            result = Tensor.fill_empty(self.grad, padd_shape) + Tensor.ones(padd_shape)
-            result = Tensor.reshape(result, self.shape)
-            # print(result)
-            self.grad = result
+            self.grad += Tensor.ones(self.shape)
 
         output._backward = backward
 
@@ -157,8 +158,8 @@ class Tensor:
 
     @staticmethod
     def _sum_if_broadcasting_occured(x, y):
-        x_shape, y_shape = x.shape, y.shape
-        x_dim, y_dim = len(x.shape), len(y.shape)
+        x_shape, y_shape = x.shape if hasattr(x, "shape") else (1, ), y.shape if hasattr(y, "shape") else (1, ) 
+        x_dim, y_dim = len(x_shape), len(y_shape)
         difference = abs(x_dim - y_dim)
         broadcast_axis = []
 
@@ -169,13 +170,17 @@ class Tensor:
         else:
             return x
 
-        # broadcast_axis = tuple([abs(x - y) for x, y in zip(x_shape, y_shape)])
         i = 0
         for k, j in zip(x_shape, y_shape):
             if(k != j):
                 broadcast_axis.append(i)
             i += 1
         return x.sum(axis=tuple(broadcast_axis))
+
+    @staticmethod
+    def full(shape, fill_value):
+        return Tensor(np.full(shape, fill_value)) 
+
 
     @staticmethod
     def fill_empty(tensor, target_shape, fill_value:Union[int, float]=0.0):
@@ -214,9 +219,8 @@ if __name__ == "__main__":
     a = Tensor([[2, 3, 4], [1, 2, 3]], require_grad=True, label="A")
     b = Tensor([4, 2, 3], require_grad=True, label="B")
 
-    c = a + b
+    c = 2 * b
     d = c.sum()
-
     d.backward()
-    print(a, b)
 
+    print(a, b)
