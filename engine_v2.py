@@ -12,11 +12,12 @@ class BroadcastError(Exception):
 
 class Tensor:
     def __init__(self, data, children=(), require_grad=False, label=""):
+        # print("The data is ", data, np.array(data))
         self.data = np.array(data) if hasattr(data, "__len__") else np.array([data])
         self.shape = self.data.shape
         self.ndim = len(self.shape)
-        self.require_grad = require_grad
-        self.grad = Tensor.zeros(self.shape) if require_grad else 0.0
+        self.require_grad = require_grad or any([child.require_grad for child in children])
+        self.grad = Tensor.zeros(self.shape) if self.require_grad else None
         self.children = children 
         self.label = label
         self._backward = lambda: None
@@ -84,11 +85,18 @@ class Tensor:
         # The broadcast method will raise a broadcast exception if it's not broadcastable
         Tensor.can_broadcast(self.data, other.data)
 
-        output = Tensor(self.data + other.data, (self, other))
+        # print("Add is", self, other)
+        output = Tensor(self.data + other.data, (self, other), label="Add")
+
+        # print("Result", self.data, other.data, output,"End")
 
         def backward():
-            self.grad += Tensor._sum_if_broadcasting_occured(output.grad, self.grad) 
-            other.grad += Tensor._sum_if_broadcasting_occured(output.grad, other.grad)
+            # print("first add grad")
+            if(self.require_grad):
+                self.grad += Tensor._sum_if_broadcasting_occured(output.grad, self.grad) 
+            # print("second add grad", output, other, self)
+            if(other.require_grad):
+                other.grad += Tensor._sum_if_broadcasting_occured(output.grad, other.grad)
 
         output._backward = backward
         return output
@@ -112,27 +120,33 @@ class Tensor:
         output = Tensor(np.matmul(self.data, other.data), children=(self, other))
 
         def backward():
+            
             tmp = other.data * output.grad
-            self.grad = Tensor.fill_empty(self.grad, tmp.shape) + tmp
+            if(self.require_grad):
+                self.grad = Tensor.fill_empty(self.grad, tmp.shape) + tmp
             tmp = other.data * output.grad
-            other.grad = Tensor.fill_empty(other.grad, tmp.shape) + tmp
+            if(other.require_grad):
+                other.grad = Tensor.fill_empty(other.grad, tmp.shape) + tmp
 
         output._backward = backward
 
         return output
 
     def __mul__(self, other):
-        other = Tensor.fill_empty(Tensor(other), self.shape, fill_value=other) if isinstance(other, (int, float)) else other
+        other = Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
+        # print("Other is ",other)
 
         # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
         Tensor.can_broadcast(self, other)
 
-        output = Tensor(self.data * other.data, label="M.out")
+        output = Tensor(self.data * other.data, label="M.out", children=(self, other))
 
         def backward():
             
-            self.grad += Tensor._sum_if_broadcasting_occured(other * output.grad, self.grad)
-            other.grad += Tensor._sum_if_broadcasting_occured(self * output.grad, other.grad)
+            if(self.require_grad):
+                self.grad += Tensor._sum_if_broadcasting_occured(other * output.grad, self.grad)
+            if(other.require_grad):
+                other.grad += Tensor._sum_if_broadcasting_occured(self * output.grad, other.grad)
 
         output._backward = backward
 
@@ -140,12 +154,15 @@ class Tensor:
 
     def __repr__(self) -> str:
         grad = self.grad.data if(isinstance(self.grad, Tensor)) else self.grad
-        return f"\nTensor(data={self.data}, grad={grad}, shape={self.shape}, label={self.label})"
+        return f"\n| Tensor(data={self.data}, grad={grad}, shape={self.shape}, label={self.label}, require_grad={self.require_grad})"
 
     def sum(self, axis=None):
         output = Tensor(self.data.sum(axis), children=(self,))
         def backward():
-            self.grad += Tensor.ones(self.shape)
+            # Sum function always assing 1 as gradient to each element
+            # print("first sum grad")
+            if(self.require_grad):
+                self.grad += Tensor.ones(self.shape)
 
         output._backward = backward
 
@@ -164,10 +181,13 @@ class Tensor:
         broadcast_axis = []
 
         if(x_dim > y_dim):
+            # print("Here first", x, y, "here first end")
             y_shape = (1,) * difference + y_shape
         elif(x_dim < y_dim):
+            # print("Here second", x, y, "here second end")
             x_shape = (1,) * difference + x_shape
         else:
+            # print("Here", x, "Here end")
             return x
 
         i = 0
@@ -175,6 +195,7 @@ class Tensor:
             if(k != j):
                 broadcast_axis.append(i)
             i += 1
+        # print("Broadcast axis is", broadcast_axis)
         return x.sum(axis=tuple(broadcast_axis))
 
     @staticmethod
@@ -184,7 +205,6 @@ class Tensor:
 
     @staticmethod
     def fill_empty(tensor, target_shape, fill_value:Union[int, float]=0.0):
-        tensor = Tensor(tensor) if not isinstance(tensor, Tensor) else tensor
         if(isinstance(target_shape, int)):
             pad = [0,  target_shape - tensor.shape[0]]
         else:
@@ -210,7 +230,8 @@ class Tensor:
         self.grad = 1.0
 
         for child in reversed(graph):
-            child._backward()
+            if(child.require_grad):
+                child._backward()
 
 
 if __name__ == "__main__":
@@ -219,8 +240,8 @@ if __name__ == "__main__":
     a = Tensor([[2, 3, 4], [1, 2, 3]], require_grad=True, label="A")
     b = Tensor([4, 2, 3], require_grad=True, label="B")
 
-    c = 2 * b
+    c = a - b
     d = c.sum()
     d.backward()
 
-    print(a, b)
+    print("\n\nFinal output is", a.grad, b.grad)
