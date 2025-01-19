@@ -13,7 +13,7 @@ class BroadcastError(Exception):
 class Tensor:
     def __init__(self, data, children=(), require_grad=False, label=""):
         # print("The data is ", data, np.array(data))
-        self.data = np.array(data) if hasattr(data, "__len__") else np.array([data])
+        self.data = np.array(data, dtype=float) if hasattr(data, "__len__") else np.array([data], dtype=float)
         self.shape = self.data.shape
         self.ndim = len(self.shape)
         self.require_grad = require_grad or any([child.require_grad for child in children])
@@ -81,6 +81,7 @@ class Tensor:
         return self.__add__(other)
 
     def __add__(self, other):
+        # print("In add", other)
         other = other if isinstance(other, Tensor) else Tensor(other)
         # The broadcast method will raise a broadcast exception if it's not broadcastable
         Tensor.can_broadcast(self.data, other.data)
@@ -107,8 +108,15 @@ class Tensor:
     def __sub__(self, other):
         return self.__add__(-1 * other)
 
-    def __rmul__(self, other):
-        return self.__mul__(other)
+    def __pow__(self, other):
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        output = Tensor(np.power(self.data, other.data), children=(self, ), label="pow")
+
+        def backward():
+            self.grad += other.data * (self.data**(other.data - 1)) * output.grad.data #type: ignore
+
+        output._backward = backward
+        return output
 
     def __matmul__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
@@ -131,6 +139,15 @@ class Tensor:
         output._backward = backward
 
         return output
+
+    def __rtruediv__(self, other):
+        return self.__truediv__(other)
+
+    def __truediv__(self, other):
+        return self * (other**-1)
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
 
     def __mul__(self, other):
         other = Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
@@ -237,11 +254,10 @@ class Tensor:
 if __name__ == "__main__":
 
 
-    a = Tensor([[2, 3, 4], [1, 2, 3]], require_grad=True, label="A")
+    a = Tensor([[2, 3, 4], [2, 3, 1]], require_grad=True, label="A")
     b = Tensor([4, 2, 3], require_grad=True, label="B")
 
-    c = a - b
+    c = a/b
     d = c.sum()
     d.backward()
-
-    print("\n\nFinal output is", a.grad, b.grad)
+    print("Final output is", a, b)
