@@ -9,6 +9,11 @@ class BroadcastError(Exception):
         self.message = f"Cannot broadcaset items of shape {shape_1} and {shape_2}"
         super().__init__(self.message)
 
+class DotProductError(Exception):
+
+    def __init__(self):
+        self.message = "Cannot do matrix multiplication"
+        super().__init__(self.message)
 
 class Tensor:
     def __init__(self, data, children=(), require_grad=False, label=""):
@@ -31,6 +36,9 @@ class Tensor:
     @staticmethod
     def zeros(shape: Union[int, Tuple, List[int]]):
         return Tensor(np.zeros(shape))
+
+    def T(self):
+        return Tensor(np.transpose(self.data))
 
 
     @staticmethod
@@ -123,22 +131,42 @@ class Tensor:
 
         # Checking if the mat mul can be performed
         # Refer for more info https://data-apis.org/array-api/latest/API_specification/generated/array_api.matmul.html#array_api.matmul
-        assert self.shape[-1] == other.shape[-min(other.ndim, 2)], "Invalid dimension cannot do dot product"
+        if(self.ndim == 1 and other.ndim > 1 and self.shape[-1] == other.shape[-2]):
+            pass
+        elif(self.shape[-1] == other.shape[-min(other.ndim, 2)]):
+            pass
+        else:
+            raise DotProductError
         
-        output = Tensor(np.matmul(self.data, other.data), children=(self, other))
+        output = Tensor(np.matmul(self.data, other.data), children=(self, other), label="matmul")
 
         def backward():
+
+            if(len(output.grad.shape) == 1): #type: ignore
+                output_grad = Tensor.expand_dims(output.grad, 1)
+            else:
+                output_grad = output.grad
             
-            tmp = other.data * output.grad
             if(self.require_grad):
-                self.grad = Tensor.fill_empty(self.grad, tmp.shape) + tmp
-            tmp = other.data * output.grad
+                tmp = Tensor._broadcast_for_gradient(output.grad, self, other)
+                # print(f"Tmp is {tmp}, {tmp.T()}, {output_grad}, {output_grad @ tmp.T()}\n")
+                self.grad += Tensor._sum_if_broadcasting_occured(output_grad @ tmp.T(), self.grad)
             if(other.require_grad):
-                other.grad = Tensor.fill_empty(other.grad, tmp.shape) + tmp
+                tmp = Tensor._broadcast_for_gradient(output.grad, other, self)
+                # print("Tmp is ", tmp)
+                other.grad += Tensor._sum_if_broadcasting_occured(tmp.T() @ output_grad, other.grad)
 
         output._backward = backward
 
         return output
+
+    @staticmethod
+    def compare_input_and_gradient(input, grad):
+        pass
+
+    @staticmethod
+    def expand_dims(tensor, axis):
+        return Tensor(np.expand_dims(tensor.data, axis=axis))
 
     def __rtruediv__(self, other):
         return self.__truediv__(other)
@@ -154,6 +182,7 @@ class Tensor:
         # print("Other is ",other)
 
         # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
+        # print("THe other is", self, other)
         Tensor.can_broadcast(self, other)
 
         output = Tensor(self.data * other.data, label="M.out", children=(self, other))
@@ -186,6 +215,29 @@ class Tensor:
         return output
 
     @staticmethod
+    def _broadcast_for_gradient(prev_gradient, current, other):
+        try:
+            Tensor.can_broadcast(prev_gradient, other)
+            return prev_gradient * other
+        except BroadcastError:
+            # print("Cannot broadcast. Will require manual broadcasting", prev_gradient, other.data)
+            pass
+
+        g_shape, c_shape, o_shape = prev_gradient.shape, current.shape, other.shape
+        broadcast_dimension = Tensor.can_broadcast(current, other)
+        # print("\n \t Broadcast details")
+        # print(g_shape, c_shape, o_shape)
+        # print("Output is ",other)
+        # print("Input is", current)
+        # print("Broadcast dimension ", Tensor.can_broadcast(current, other))
+        # print("\n")
+        if(broadcast_dimension == c_shape):
+            result = Tensor(np.broadcast_to(other.data, c_shape))
+        else:
+            result = other 
+        return result
+
+    @staticmethod
     def reshape(tensor, shape):
         data = tensor.data
         return Tensor(np.reshape(data, shape))
@@ -198,13 +250,10 @@ class Tensor:
         broadcast_axis = []
 
         if(x_dim > y_dim):
-            # print("Here first", x, y, "here first end")
             y_shape = (1,) * difference + y_shape
         elif(x_dim < y_dim):
-            # print("Here second", x, y, "here second end")
             x_shape = (1,) * difference + x_shape
         else:
-            # print("Here", x, "Here end")
             return x
 
         i = 0
@@ -212,7 +261,6 @@ class Tensor:
             if(k != j):
                 broadcast_axis.append(i)
             i += 1
-        # print("Broadcast axis is", broadcast_axis)
         return x.sum(axis=tuple(broadcast_axis))
 
     @staticmethod
@@ -254,10 +302,11 @@ class Tensor:
 if __name__ == "__main__":
 
 
-    a = Tensor([[2, 3, 4], [2, 3, 1]], require_grad=True, label="A")
-    b = Tensor([4, 2, 3], require_grad=True, label="B")
+    a = Tensor([[1, 2, 3], [4, 5,6], [7, 8, 9]], require_grad=True, label="A")
+    b = Tensor([[9, 8, 7], [6, 5, 4], [3, 2, 1]], require_grad=True, label="B")
+    # b = Tensor([9, 8, 7], require_grad=True, label="B")
 
-    c = a/b
+    c = a @ b
     d = c.sum()
     d.backward()
     print("Final output is", a, b)
