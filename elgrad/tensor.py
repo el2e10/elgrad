@@ -1,5 +1,4 @@
 from typing import Union, List, Tuple
-from functools import reduce
 
 import numpy as np  # type: ignore
 
@@ -141,28 +140,23 @@ class Tensor:
         output = Tensor(np.matmul(self.data, other.data), children=(self, other), label="matmul")
 
         def backward():
-
-            if(len(output.grad.shape) == 1): #type: ignore
-                output_grad = Tensor.expand_dims(output.grad, 1)
-            else:
-                output_grad = output.grad
             
             if(self.require_grad):
-                tmp = Tensor._broadcast_for_gradient(output.grad, self, other)
-                # print(f"Tmp is {tmp}, {tmp.T()}, {output_grad}, {output_grad @ tmp.T()}\n")
-                self.grad += Tensor._sum_if_broadcasting_occured(output_grad @ tmp.T(), self.grad)
+                output_grad = Tensor.expand_dims(output.grad, 1) if(len(output.grad.shape) == 1) else output.grad #type: ignore
+                tmp =  Tensor._broadcast_for_gradient(output_grad, self, other)
+                current_grad = output_grad * tmp if(len(output.grad.shape) == 1) else output_grad @ tmp.T() #type: ignore
+                self.grad += Tensor._sum_if_broadcasting_occured(current_grad, self.grad)
+                # print("Self grad is", self.grad)
             if(other.require_grad):
-                tmp = Tensor._broadcast_for_gradient(output.grad, other, self)
-                # print("Tmp is ", tmp)
-                other.grad += Tensor._sum_if_broadcasting_occured(tmp.T() @ output_grad, other.grad)
+                output_grad = Tensor.expand_dims(output.grad, 1) if(len(output.grad.shape) == 1) else output.grad #type: ignore
+                print(f"\nInside backward output_grad {output_grad}")
+                tmp = Tensor._broadcast_for_gradient(output_grad, other, self)
+                current_grad = tmp * output_grad if(len(output.grad.shape) == 1) else tmp.T() @ output_grad #type: ignore
+                other.grad += Tensor._sum_if_broadcasting_occured(current_grad, other.grad)
 
         output._backward = backward
 
         return output
-
-    @staticmethod
-    def compare_input_and_gradient(input, grad):
-        pass
 
     @staticmethod
     def expand_dims(tensor, axis):
@@ -179,16 +173,14 @@ class Tensor:
 
     def __mul__(self, other):
         other = Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
-        # print("Other is ",other)
 
         # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
-        # print("THe other is", self, other)
+        print("THe other is", self, other)
         Tensor.can_broadcast(self, other)
 
         output = Tensor(self.data * other.data, label="M.out", children=(self, other))
 
         def backward():
-            
             if(self.require_grad):
                 self.grad += Tensor._sum_if_broadcasting_occured(other * output.grad, self.grad)
             if(other.require_grad):
@@ -216,21 +208,18 @@ class Tensor:
 
     @staticmethod
     def _broadcast_for_gradient(prev_gradient, current, other):
+        if(prev_gradient.shape[-1] == other.T().shape[-min(other.ndim, 2)]):
+            print(f"\nInside broadcast for gradient prev {prev_gradient}, {prev_gradient.shape} \n\n other {other}, {other.shape} ")
+            return other
         try:
             Tensor.can_broadcast(prev_gradient, other)
             return prev_gradient * other
         except BroadcastError:
-            # print("Cannot broadcast. Will require manual broadcasting", prev_gradient, other.data)
             pass
 
-        g_shape, c_shape, o_shape = prev_gradient.shape, current.shape, other.shape
+        c_shape = current.shape
         broadcast_dimension = Tensor.can_broadcast(current, other)
-        # print("\n \t Broadcast details")
-        # print(g_shape, c_shape, o_shape)
-        # print("Output is ",other)
-        # print("Input is", current)
-        # print("Broadcast dimension ", Tensor.can_broadcast(current, other))
-        # print("\n")
+        
         if(broadcast_dimension == c_shape):
             result = Tensor(np.broadcast_to(other.data, c_shape))
         else:
@@ -279,7 +268,15 @@ class Tensor:
         padded_array = np.pad(tensor.data, pad, constant_values=fill_value)
         return Tensor(padded_array)
 
-    
+    @staticmethod
+    def array_equal(first, second) -> bool:
+        if(not isinstance(second, (float, int, list))):
+            second = second.data
+
+        if(not isinstance(first, (float, int, list))):
+            first = first.data
+        return np.array_equal(first, second)
+     
     def backward(self):
         graph = []
         visited = set()
@@ -298,15 +295,5 @@ class Tensor:
             if(child.require_grad):
                 child._backward()
 
-
-if __name__ == "__main__":
-
-
-    a = Tensor([[1, 2, 3], [4, 5,6], [7, 8, 9]], require_grad=True, label="A")
-    b = Tensor([[9, 8, 7], [6, 5, 4], [3, 2, 1]], require_grad=True, label="B")
-    # b = Tensor([9, 8, 7], require_grad=True, label="B")
-
-    c = a @ b
-    d = c.sum()
-    d.backward()
-    print("Final output is", a, b)
+if __name__ == '__main__':
+    pass 

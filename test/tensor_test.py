@@ -1,0 +1,51 @@
+from elgrad import Tensor #type: ignore
+
+
+class TestMatMul():
+    def matmul_grad(self, x: Tensor, y: Tensor):
+        c:Tensor = x @ y
+        print(f"Mat mul result is {c}")
+        d = c.sum()
+        d.backward()
+        return x.grad, y.grad
+
+    def test_one(self):
+        a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
+        b = Tensor([1, 2, 3], require_grad=True)
+
+        a_grad, b_grad = self.matmul_grad(a, b)
+        print(a_grad, b_grad)
+        a_grad_expected, b_grad_expected = Tensor([[1, 2, 3], [1, 2, 3], [1, 2, 3]]), Tensor([12, 15, 18])
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected) 
+
+    def test_two(self):
+        a = Tensor([[1, 2, 3], [4, 5, 6]], require_grad=True)
+        b = Tensor([44, 55, 66], require_grad=True)
+
+        a_grad, b_grad = self.matmul_grad(a, b)
+        print(a_grad, b_grad)
+        a_grad_expected, b_grad_expected = Tensor([[44, 55, 66], [44, 55, 66]]), Tensor([5, 7, 9])
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected) 
+
+    def test_three(self):
+        a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
+        b = Tensor([[1, 2, 3], [11, 22, 33], [44, 55, 66]], require_grad=True)
+
+        a_grad, b_grad = self.matmul_grad(a, b)
+        print(a_grad, b_grad)
+        a_grad_expected, b_grad_expected = Tensor([[6, 66, 165], [6, 66, 165],[6, 66, 165]]), Tensor([[12, 12, 12], [15, 15, 15], [18, 18, 18]])
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected) 
+
+    def test_four(self):
+        a = Tensor([[1, 2], [3, 4], [5, 6]], require_grad=True)
+        b = Tensor([[7, 8, 9, 10], [11, 12, 13, 14]], require_grad=True)
+
+        a_grad, b_grad = self.matmul_grad(a, b)
+        print(a_grad, b_grad)
+        a_grad_expected, b_grad_expected = Tensor([[34, 50], [34, 50],[34, 50]]), Tensor([[9, 9, 9, 9], [12, 12, 12, 12]])
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected) 
+
+
+
+
+
