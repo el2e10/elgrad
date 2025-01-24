@@ -193,7 +193,6 @@ class Tensor:
             # Sum function always assing 1 as gradient to each element
             if(self.require_grad):
                 self.grad += Tensor.ones(self.shape)
-
         output._backward = backward
 
         return output
@@ -217,9 +216,8 @@ class Tensor:
             result = other 
         return result
 
-    @staticmethod
-    def reshape(tensor, shape):
-        data = tensor.data
+    def reshape(self, shape):
+        data = self.data
         return Tensor(np.reshape(data, shape))
 
     @staticmethod
@@ -229,24 +227,25 @@ class Tensor:
         difference = abs(x_dim - y_dim)
         broadcast_axis = []
 
+        # print(f"\nHere x {x} <--> x_dim {x_dim}| {x_shape} , y_dim {y_dim}| {y_shape}, y_shape {(1, ) * 2 + y_shape}")
         if(x_dim > y_dim):
             y_shape = (1,) * difference + y_shape
         elif(x_dim < y_dim):
             x_shape = (1,) * difference + x_shape
-        else:
-            return x
 
+        broadcasted_shape = Tensor.can_broadcast(x, y)
         i = 0
-        for k, j in zip(x_shape, y_shape):
-            if(k != j):
+        for k, j, m in zip(x_shape, y_shape, broadcasted_shape):
+            if(len(set([k, j, m])) != 1):
                 broadcast_axis.append(i)
             i += 1
-        return x.sum(axis=tuple(broadcast_axis))
+        # print(f"\nSum if broadcast axis is {broadcast_axis} and broadcast shape is {broadcasted_shape} x_shape is {x_shape} y_shape is {y_shape} output = {x.sum(axis=tuple(broadcast_axis)).reshape(shape=y_shape)}\n")
+        # Need to reshape because the grad should have the same shape as vector
+        return x.sum(axis=tuple(broadcast_axis)).reshape(shape=y.shape) if(len(broadcast_axis) > 0) else x
 
     @staticmethod
     def full(shape, fill_value):
         return Tensor(np.full(shape, fill_value)) 
-
 
     @staticmethod
     def fill_empty(tensor, target_shape, fill_value:Union[int, float]=0.0):

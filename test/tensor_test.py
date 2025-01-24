@@ -1,9 +1,10 @@
 from elgrad import Tensor #type: ignore
 
+
 class TestMatAdd():
     def matadd_grad(self, x: Tensor, y: Tensor):
         c = x + y
-        print(c)
+        print(f"Mat add result is {c}")
         d = c.sum()
         d.backward()
         return x.grad, y.grad
@@ -16,6 +17,35 @@ class TestMatAdd():
         print(a_grad, b_grad)
         a_grad_expected, b_grad_expected = Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]), Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]])
         assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected) 
+
+    def test_two(self):
+        a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
+        b = Tensor([[10, 20, 30]], require_grad=True)
+
+        a_grad, b_grad = self.matadd_grad(a, b)
+        print(a_grad, b_grad)
+        a_grad_expected, b_grad_expected = Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]), Tensor([[3, 3, 3]])
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected) 
+
+    def test_three(self):
+        a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
+        b = Tensor([10, 20, 30], require_grad=True)
+
+        a_grad, b_grad = self.matadd_grad(a, b)
+        print(a_grad, b_grad)
+        a_grad_expected, b_grad_expected = Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]), Tensor([3, 3, 3])
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected) 
+
+    def test_four(self):
+        a = Tensor([[1, 2, 3], [4, 5, 6]], require_grad=True)
+        b = Tensor([[10], [20]], require_grad=True)
+
+        a_grad, b_grad = self.matadd_grad(a, b)
+        print(a_grad, b_grad)
+        a_grad_expected, b_grad_expected = Tensor([[1, 1, 1], [1, 1, 1]]), Tensor([[3], [3]])
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected) 
+
+
 
 
 class TestMatMul():
