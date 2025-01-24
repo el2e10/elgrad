@@ -16,7 +16,6 @@ class DotProductError(Exception):
 
 class Tensor:
     def __init__(self, data, children=(), require_grad=False, label=""):
-        # print("The data is ", data, np.array(data))
         self.data = np.array(data, dtype=float) if hasattr(data, "__len__") else np.array([data], dtype=float)
         self.shape = self.data.shape
         self.ndim = len(self.shape)
@@ -88,21 +87,15 @@ class Tensor:
         return self.__add__(other)
 
     def __add__(self, other):
-        # print("In add", other)
         other = other if isinstance(other, Tensor) else Tensor(other)
         # The broadcast method will raise a broadcast exception if it's not broadcastable
         Tensor.can_broadcast(self.data, other.data)
 
-        # print("Add is", self, other)
         output = Tensor(self.data + other.data, (self, other), label="Add")
 
-        # print("Result", self.data, other.data, output,"End")
-
         def backward():
-            # print("first add grad")
             if(self.require_grad):
                 self.grad += Tensor._sum_if_broadcasting_occured(output.grad, self.grad) 
-            # print("second add grad", output, other, self)
             if(other.require_grad):
                 other.grad += Tensor._sum_if_broadcasting_occured(output.grad, other.grad)
 
@@ -146,11 +139,12 @@ class Tensor:
                 tmp =  Tensor._broadcast_for_gradient(output_grad, self, other)
                 current_grad = output_grad * tmp if(len(output.grad.shape) == 1) else output_grad @ tmp.T() #type: ignore
                 self.grad += Tensor._sum_if_broadcasting_occured(current_grad, self.grad)
-                # print("Self grad is", self.grad)
             if(other.require_grad):
                 output_grad = Tensor.expand_dims(output.grad, 1) if(len(output.grad.shape) == 1) else output.grad #type: ignore
-                print(f"\nInside backward output_grad {output_grad}")
-                tmp = Tensor._broadcast_for_gradient(output_grad, other, self)
+                if(self.T().shape[-1] != output_grad.shape[-min(output_grad.ndim, 2)]): #type: ignore
+                    tmp = Tensor._broadcast_for_gradient(output_grad, other, self)
+                else:
+                    tmp = self
                 current_grad = tmp * output_grad if(len(output.grad.shape) == 1) else tmp.T() @ output_grad #type: ignore
                 other.grad += Tensor._sum_if_broadcasting_occured(current_grad, other.grad)
 
@@ -175,7 +169,6 @@ class Tensor:
         other = Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
 
         # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
-        print("THe other is", self, other)
         Tensor.can_broadcast(self, other)
 
         output = Tensor(self.data * other.data, label="M.out", children=(self, other))
@@ -198,7 +191,6 @@ class Tensor:
         output = Tensor(self.data.sum(axis), children=(self,))
         def backward():
             # Sum function always assing 1 as gradient to each element
-            # print("first sum grad")
             if(self.require_grad):
                 self.grad += Tensor.ones(self.shape)
 
@@ -209,7 +201,6 @@ class Tensor:
     @staticmethod
     def _broadcast_for_gradient(prev_gradient, current, other):
         if(prev_gradient.shape[-1] == other.T().shape[-min(other.ndim, 2)]):
-            print(f"\nInside broadcast for gradient prev {prev_gradient}, {prev_gradient.shape} \n\n other {other}, {other.shape} ")
             return other
         try:
             Tensor.can_broadcast(prev_gradient, other)
