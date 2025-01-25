@@ -199,6 +199,8 @@ class Tensor:
 
     @staticmethod
     def _broadcast_for_gradient(prev_gradient, current, other):
+        # TODO: Optimize this function, I have to manually add a condition in matmul
+
         if(prev_gradient.shape[-1] == other.T().shape[-min(other.ndim, 2)]):
             return other
         try:
@@ -222,6 +224,7 @@ class Tensor:
 
     @staticmethod
     def _sum_if_broadcasting_occured(x, y):
+        # If broadcasting occured between two tensors during an operation we have to sum the gradient along the axis where broadcasting occured
         x_shape, y_shape = x.shape if hasattr(x, "shape") else (1, ), y.shape if hasattr(y, "shape") else (1, ) 
         x_dim, y_dim = len(x_shape), len(y_shape)
         difference = abs(x_dim - y_dim)
@@ -240,6 +243,7 @@ class Tensor:
                 broadcast_axis.append(i)
             i += 1
         # print(f"\nSum if broadcast axis is {broadcast_axis} and broadcast shape is {broadcasted_shape} x_shape is {x_shape} y_shape is {y_shape} output = {x.sum(axis=tuple(broadcast_axis)).reshape(shape=y_shape)}\n")
+
         # Need to reshape because the grad should have the same shape as vector
         return x.sum(axis=tuple(broadcast_axis)).reshape(shape=y.shape) if(len(broadcast_axis) > 0) else x
 
@@ -265,7 +269,8 @@ class Tensor:
 
         if(not isinstance(first, (float, int, list))):
             first = first.data
-        return np.array_equal(first, second)
+        # Rounding the values to 4 decimals so that it is easier to compare the gradient values during testing
+        return np.array_equal(np.round(first, 4), np.round(second, 4))
      
     def backward(self):
         graph = []
