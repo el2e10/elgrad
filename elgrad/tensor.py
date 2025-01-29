@@ -110,10 +110,16 @@ class Tensor:
 
     def __pow__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
+
+        # The broadcast method will raise a broadcast exception if it's not broadcastable
+        Tensor.can_broadcast(self.data, other.data)
         output = Tensor(np.power(self.data, other.data), children=(self, ), label="pow")
 
         def backward():
-            self.grad += other.data * (self.data**(other.data - 1)) * output.grad.data #type: ignore
+            if(self.require_grad):
+                self.grad += Tensor._sum_if_broadcasting_occured(other.data * (self.data**(other.data - 1)) * output.grad.data, self.grad) #type: ignore
+            if(other.require_grad):
+                other.grad += Tensor._sum_if_broadcasting_occured(np.log(self.data) * (self.data ** other.data) * output.grad.data, other.grad) #type: ignore
 
         output._backward = backward
         return output
@@ -219,7 +225,7 @@ class Tensor:
         return result
 
     def reshape(self, shape):
-        data = self.data
+        data = self.data 
         return Tensor(np.reshape(data, shape))
 
     @staticmethod
@@ -242,10 +248,9 @@ class Tensor:
             if(len(set([k, j, m])) != 1):
                 broadcast_axis.append(i)
             i += 1
-        # print(f"\nSum if broadcast axis is {broadcast_axis} and broadcast shape is {broadcasted_shape} x_shape is {x_shape} y_shape is {y_shape} output = {x.sum(axis=tuple(broadcast_axis)).reshape(shape=y_shape)}\n")
 
         # Need to reshape because the grad should have the same shape as vector
-        return x.sum(axis=tuple(broadcast_axis)).reshape(shape=y.shape) if(len(broadcast_axis) > 0) else x
+        return x.sum(axis=tuple(broadcast_axis)).reshape(y.shape) if(len(broadcast_axis) > 0) else x
 
     @staticmethod
     def full(shape, fill_value):
@@ -264,12 +269,12 @@ class Tensor:
 
     @staticmethod
     def array_equal(first, second) -> bool:
-        if(not isinstance(second, (float, int, list))):
+        if(not isinstance(second, (float, int, list, tuple))):
             second = second.data
 
-        if(not isinstance(first, (float, int, list))):
+        if(not isinstance(first, (float, int, list, tuple))):
             first = first.data
-        # Rounding the values to 4 decimals so that it is easier to compare the gradient values during testing
+        # Rounding the value to 4 decimals so that it is easier to compare the gradient values during testing
         return np.array_equal(np.round(first, 4), np.round(second, 4))
      
     def backward(self):
