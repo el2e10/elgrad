@@ -40,12 +40,15 @@ class Tensor:
         self._backward = lambda: None
         self._current_index = 0
 
+    def zero_grad(self):
+        self.grad = Tensor.zeros(self.grad.shape, require_grad=False) if self.require_grad else None #type: ignore
+
     @staticmethod
     def ones(shape: Union[int, Tuple, List[int]]):
         return Tensor(np.ones(shape))
 
     @staticmethod
-    def zeros(shape: Union[int, Tuple, List[int]], require_grad, label):
+    def zeros(shape: Union[int, Tuple, List[int]], require_grad, label=""):
         return Tensor(np.zeros(shape), require_grad=require_grad, label=label)
 
     def T(self):
@@ -135,6 +138,8 @@ class Tensor:
 
         # The broadcast method will raise a broadcast exception if it's not broadcastable
         Tensor.can_broadcast(self.data, other.data)
+        
+        # print(f"{self.data}, {other.data}")
         output = Tensor(np.power(self.data, other.data), children=(self,), label="pow")
 
         def backward():
