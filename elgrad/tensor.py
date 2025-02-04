@@ -41,7 +41,8 @@ class Tensor:
         self._current_index = 0
 
     def zero_grad(self):
-        self.grad = Tensor.zeros(self.grad.shape, require_grad=False) if self.require_grad else None #type: ignore
+        self.grad = (
+            Tensor.zeros(self.grad.shape, require_grad=False) if self.require_grad else None)  # type: ignore
 
     @staticmethod
     def ones(shape: Union[int, Tuple, List[int]]):
@@ -109,6 +110,19 @@ class Tensor:
     def __radd__(self, other):
         return self.__add__(other)
 
+    def log(self):
+        output = Tensor(np.log(self.data), children=(self,), label="log")
+
+        def backward():
+            tmp = Tensor._sum_if_broadcasting_occured(
+                output.grad * Tensor(1 / self.data), output.grad
+            )
+            self.grad += tmp
+
+        output._backward = backward
+
+        return output
+
     def __add__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
         # The broadcast method will raise a broadcast exception if it's not broadcastable
@@ -138,16 +152,16 @@ class Tensor:
 
         # The broadcast method will raise a broadcast exception if it's not broadcastable
         Tensor.can_broadcast(self.data, other.data)
-        
-        # print(f"{self.data}, {other.data}")
+
         output = Tensor(np.power(self.data, other.data), children=(self,), label="pow")
 
         def backward():
             if self.require_grad:
-                self.grad += Tensor._sum_if_broadcasting_occured(other.data * (self.data ** (other.data - 1)) * output.grad.data, self.grad)  # type: ignore
+                self.grad += Tensor._sum_if_broadcasting_occured(
+                    other.data * (self.data ** (other.data - 1)) * output.grad.data, self.grad)  # type: ignore
             if other.require_grad:
                 other.grad += Tensor._sum_if_broadcasting_occured(
-                    np.log(self.data) * (self.data**other.data) * output.grad.data, other.grad)  # type: ignore
+                    np.log(self.data) * (self.data**other.data) * output.grad.data,other.grad)  # type: ignore
 
         output._backward = backward
         return output
@@ -171,8 +185,7 @@ class Tensor:
         def backward():
             if self.require_grad:
                 output_grad = (
-                    Tensor.expand_dims(output.grad, 1)
-                    if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
+                    Tensor.expand_dims(output.grad, 1) if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
                 tmp = Tensor._broadcast_for_gradient(output_grad, self, other)
                 current_grad = (
                     output_grad * tmp
@@ -182,7 +195,8 @@ class Tensor:
                 )
             if other.require_grad:
                 output_grad = (
-                    Tensor.expand_dims(output.grad, 1) if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
+                    Tensor.expand_dims(output.grad, 1)
+                    if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
                 if self.T().shape[-1] != output_grad.shape[-min(output_grad.ndim, 2)]:  # type: ignore
                     tmp = Tensor._broadcast_for_gradient(output_grad, other, self)
                 else:
