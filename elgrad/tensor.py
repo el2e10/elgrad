@@ -1,3 +1,4 @@
+from math import exp
 from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
@@ -264,6 +265,19 @@ class Tensor:
         output._backward = backward
 
         return output
+
+    def softmax(self, dim=0):
+        numerator = np.exp(self.data)
+        denominator = numerator.sum(dim, keepdims=True)
+        output = Tensor(numerator/denominator, children=(self, ), label="softmax")
+
+        def backward():
+            pass
+        output._backward = backward
+
+        return output
+
+
 
     @staticmethod
     def _broadcast_for_gradient(prev_gradient, current, other):
