@@ -1,8 +1,81 @@
-from typing import Union
-
 import pytest  # type: ignore
-
 from elgrad import Tensor, BroadcastError  # type: ignore
+
+class TestReLU:
+    def relu_grad(self, x: Tensor):
+        c = x.relu()
+        d = c.sum()
+        d.backward()
+        return x.grad
+
+    def test_one(self):
+        a = Tensor([1, 2, 3], require_grad=True)
+        a_grad = self.relu_grad(a)
+        a_grad_expected = Tensor([1, 1, 1])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_two(self):
+        a = Tensor([[1, 2, 3], [0, -2, 3]], require_grad=True)
+        a_grad = self.relu_grad(a)
+        a_grad_expected = Tensor([[1, 1, 1], [0, 0, 1]])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_three(self):
+        a = Tensor([[1, 0, 3], [1, 2, 3]], require_grad=True)
+        a_grad = self.relu_grad(a)
+        a_grad_expected = Tensor([[1, 0, 1], [1, 1, 1]])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+
+
+class TestSoftmax:
+    def softmax_grad(self, x: Tensor, dim: int):
+        b = x.softmax(dim)
+        return b
+
+    def test_one(self):
+        a = Tensor([1, 2, 3], require_grad=True)
+        a_grad = self.softmax_grad(a, 0)
+        print(a_grad)
+        a_grad_expected = Tensor([.0900, .2447, .6652])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_two(self):
+        a = Tensor([[1, 2, 3], [4, 5, 6]], require_grad=True)
+        a_grad = self.softmax_grad(a, 0)
+        print(a_grad)
+        a_grad_expected = Tensor([[0.0474, 0.0474, 0.0474], [0.9526, 0.9526, 0.9526]])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_three(self):
+        a = Tensor([[1, 2, 3], [4, 5, 6]], require_grad=True)
+        a_grad = self.softmax_grad(a, 1)
+        print(a_grad)
+        a_grad_expected = Tensor([[0.0900, 0.2447, 0.6652], [0.0900, 0.2447, 0.6652]])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_four(self):
+        a = Tensor([[[1.,2.,3.], [4, 5, 6]], [[4.,5.,6.], [1, 2, 3]]], require_grad=True)
+        a_grad = self.softmax_grad(a, 1)
+        print(a_grad)
+        a_grad_expected = Tensor([[[0.0474, 0.0474, 0.0474], [0.9526, 0.9526, 0.9526]], [[0.9526, 0.9526, 0.9526], [0.0474, 0.0474, 0.0474]]])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_five(self):
+        a = Tensor([[[1.,2.,3.], [4, 5, 6]], [[1.,2.,3.], [4, 5, 6]]], require_grad=True)
+        a_grad = self.softmax_grad(a, 1)
+        print(a_grad)
+        a_grad_expected = Tensor([[[0.0474, 0.0474, 0.0474], [0.9526, 0.9526, 0.9526]], [[0.0474, 0.0474, 0.0474], [0.9526, 0.9526, 0.9526]]])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_six(self):
+        a = Tensor([[[1.,2.,3.], [4, 5, 6]], [[1.,2.,3.], [4, 5, 6]]], require_grad=True)
+        a_grad = self.softmax_grad(a, 2)
+        print(a_grad)
+        a_grad_expected = Tensor([[[0.09, .2447, .6652], [0.0900, .2447, .6652]], [[0.0900, .2447, .6652], [.0900, .2447, .6652]]])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+
 
 class TestMatLog:
     def mat_log_grad(self, x: Tensor):

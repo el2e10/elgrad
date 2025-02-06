@@ -1,4 +1,4 @@
-from math import exp
+from math import e
 from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
@@ -254,8 +254,8 @@ class Tensor:
         grad = self.grad.data if (isinstance(self.grad, Tensor)) else self.grad
         return f"\n| Tensor(data={self.data}, grad={grad}, shape={self.shape}, label={self.label}, require_grad={self.require_grad})"
 
-    def sum(self, axis=None):
-        output = Tensor(self.data.sum(axis), children=(self,))
+    def sum(self, axis=None, keepdims=False):
+        output = Tensor(self.data.sum(axis, keepdims=keepdims), children=(self,))
 
         def backward():
             # Sum function always assing 1 as gradient to each element
@@ -267,16 +267,22 @@ class Tensor:
         return output
 
     def softmax(self, dim=0):
-        numerator = np.exp(self.data)
+        numerator = Tensor(e) ** self
         denominator = numerator.sum(dim, keepdims=True)
-        output = Tensor(numerator/denominator, children=(self, ), label="softmax")
-
-        def backward():
-            pass
-        output._backward = backward
+        output = numerator/denominator
 
         return output
 
+    def relu(self):
+        _relu = np.vectorize(lambda x: 0 if x < 0 else x)
+        output = Tensor(_relu(self.data), children=(self, ), label="ReLU")
+
+        def backward():
+            func = np.vectorize(lambda x: 0 if x <= 0 else 1)
+            self.grad += Tensor(func(output.data)) * output.grad
+        output._backward = backward
+
+        return output
 
 
     @staticmethod
