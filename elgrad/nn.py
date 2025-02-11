@@ -7,7 +7,8 @@ random_num_generator = np.random.default_rng()
 class Linear:
 
     def __init__(self, inputs, outputs):
-        self.w = Tensor(random_num_generator.uniform(-1, 1, size=(outputs, inputs)), require_grad=True)
+        a = np.sqrt(6/(inputs + outputs))
+        self.w = Tensor(random_num_generator.uniform(-a, a, size=(outputs, inputs)), require_grad=True)
         self.b = Tensor(random_num_generator.uniform(-1, 1, 1), require_grad=True)
 
     def __call__(self, input: Tensor) -> Tensor:

@@ -270,7 +270,7 @@ class Tensor:
         numerator = Tensor(e) ** self
         denominator = numerator.sum(dim, keepdims=True)
         output = numerator/denominator
-
+        output.require_grad = True
         return output
 
     def relu(self):
