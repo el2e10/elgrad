@@ -267,19 +267,19 @@ class Tensor:
         return output
 
     def softmax(self, dim=0):
-        numerator = Tensor(e) ** self
+        numerator = Tensor(e, require_grad=True) ** self
         denominator = numerator.sum(dim, keepdims=True)
         output = numerator/denominator
         output.require_grad = True
         return output
 
     def relu(self):
-        _relu = np.vectorize(lambda x: 0 if x < 0 else x)
-        output = Tensor(_relu(self.data), children=(self, ), label="ReLU")
+        _relu_out = np.maximum(self.data, 0)
+        output = Tensor(_relu_out, children=(self, ), label="ReLU")
 
         def backward():
-            func = np.vectorize(lambda x: 0 if x <= 0 else 1)
-            self.grad += Tensor(func(output.data)) * output.grad
+            _grad_out = (output.data > 0).astype(float)
+            self.grad += Tensor(_grad_out) * output.grad
         output._backward = backward
 
         return output

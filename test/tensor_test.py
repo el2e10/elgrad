@@ -1,5 +1,6 @@
 import pytest  # type: ignore
 from elgrad import Tensor, BroadcastError  # type: ignore
+random_num_generator = np.random.default_rng()
 
 class TestReLU:
     def relu_grad(self, x: Tensor):
@@ -8,10 +9,12 @@ class TestReLU:
         d.backward()
         return x.grad
 
+        
     def test_one(self):
         a = Tensor([1, 2, 3], require_grad=True)
         a_grad = self.relu_grad(a)
         a_grad_expected = Tensor([1, 1, 1])
+        print(a_grad)
         assert Tensor.array_equal(a_grad, a_grad_expected)
 
     def test_two(self):
@@ -25,8 +28,6 @@ class TestReLU:
         a_grad = self.relu_grad(a)
         a_grad_expected = Tensor([[1, 0, 1], [1, 1, 1]])
         assert Tensor.array_equal(a_grad, a_grad_expected)
-
-
 
 class TestSoftmax:
     def softmax_grad(self, x: Tensor, dim: int):
