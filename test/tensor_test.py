@@ -1,6 +1,7 @@
+from typing import Union
+
 import pytest  # type: ignore
 from elgrad import Tensor, BroadcastError  # type: ignore
-random_num_generator = np.random.default_rng()
 
 class TestReLU:
     def relu_grad(self, x: Tensor):
@@ -140,8 +141,6 @@ class TestMatLog:
         assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
 
-
-
 class TestMatPow:
     def mat_pow_grad(self, x: Tensor, exponenet: Tensor):
         c = x**exponenet
@@ -196,6 +195,10 @@ class TestMatElemDiv:
         d = c.sum()
         d.backward()
         return x.grad, y.grad
+
+    def check_div(self, x: Union[Tensor, float, int], y: Union[Tensor, float, int]):
+        c = x / y
+        return c
 
     def test_one(self):
         a = Tensor([1, 2, 3], require_grad=True)
@@ -284,6 +287,14 @@ class TestMatElemDiv:
             b_grad, b_grad_expected
         )
 
+    def test_six(self):
+        a = 1
+        b = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
+
+        result = self.check_div(a, b)
+        result_expected = Tensor([[1.        , 0.5       , 0.33333333], [0.25      , 0.2       , 0.16666667], [0.14285714, 0.125     , 0.11111111]])
+        print(result, result_expected)
+        assert Tensor.array_equal(result, result_expected) 
 
 class TestMatElemMul:
     def mat_elem_mul_grad(self, x: Tensor, y: Tensor):

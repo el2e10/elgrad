@@ -124,6 +124,9 @@ class Tensor:
 
         return output
 
+    def __neg__(self):
+        return -1 * self
+
     def __add__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
         # The broadcast method will raise a broadcast exception if it's not broadcastable
@@ -146,7 +149,21 @@ class Tensor:
         return self.__sub__(other)
 
     def __sub__(self, other):
-        return self.__add__(-1 * other)
+        # return self.__add__(-1 * other)
+        other = other if isinstance(other, Tensor) else Tensor(other)
+        # The broadcast method will raise a broadcast exception if it's not broadcastable
+        Tensor.can_broadcast(self.data, other.data)
+
+        output = Tensor(self.data - other.data, (self, other), label="Add")
+
+        def backward():
+            if self.require_grad:
+                self.grad += Tensor._sum_if_broadcasting_occured(output.grad, self.grad)
+            if other.require_grad:
+                other.grad += Tensor._sum_if_broadcasting_occured(-1 * output.grad, other.grad)#type: ignore
+
+        output._backward = backward
+        return output
 
     def __pow__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
@@ -154,7 +171,7 @@ class Tensor:
         # The broadcast method will raise a broadcast exception if it's not broadcastable
         Tensor.can_broadcast(self.data, other.data)
 
-        output = Tensor(np.power(self.data, other.data), children=(self,), label="pow")
+        output = Tensor(np.power(self.data, other.data), children=(self, other), label="pow")
 
         def backward():
             if self.require_grad:
@@ -218,13 +235,15 @@ class Tensor:
         return Tensor(np.expand_dims(tensor.data, axis=axis))
 
     def __rtruediv__(self, other):
-        return self.__truediv__(other)
+        other = Tensor(other)
+        return other.__truediv__(self)
 
     def __truediv__(self, other):
         return self * (other**-1)
 
     def __rmul__(self, other):
         return self.__mul__(other)
+
 
     def __mul__(self, other):
         other = (
@@ -250,12 +269,14 @@ class Tensor:
 
         return output
 
+
+
     def __repr__(self) -> str:
         grad = self.grad.data if (isinstance(self.grad, Tensor)) else self.grad
         return f"\n| Tensor(data={self.data}, grad={grad}, shape={self.shape}, label={self.label}, require_grad={self.require_grad})"
 
     def sum(self, axis=None, keepdims=False):
-        output = Tensor(self.data.sum(axis, keepdims=keepdims), children=(self,))
+        output = Tensor(self.data.sum(axis, keepdims=keepdims), children=(self,), label="Sum")
 
         def backward():
             # Sum function always assing 1 as gradient to each element
@@ -267,10 +288,12 @@ class Tensor:
         return output
 
     def softmax(self, dim=0):
-        numerator = Tensor(e, require_grad=True) ** self
+        numerator = Tensor(e) ** self
+        numerator.label = "Softmax-numerator"
         denominator = numerator.sum(dim, keepdims=True)
+        denominator.label = "Softmax-denominator"
         output = numerator/denominator
-        output.require_grad = True
+        output.label = "Softmax"
         return output
 
     def relu(self):
