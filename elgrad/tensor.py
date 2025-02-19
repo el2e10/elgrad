@@ -6,7 +6,7 @@ import numpy as np  # type: ignore
 
 class BroadcastError(Exception):
     def __init__(self, shape_1, shape_2):
-        self.message = f"Cannot broadcaset items of shape {shape_1} and {shape_2}"
+        self.message = f"Cannot broadcast items of shape {shape_1} and {shape_2}"
         super().__init__(self.message)
 
 
@@ -43,7 +43,10 @@ class Tensor:
 
     def zero_grad(self):
         self.grad = (
-            Tensor.zeros(self.grad.shape, require_grad=False) if self.require_grad else None)  # type: ignore
+            Tensor.zeros(self.grad.shape, require_grad=False)
+            if self.require_grad
+            else None
+        )  # type: ignore
 
     @staticmethod
     def ones(shape: Union[int, Tuple, List[int]]):
@@ -125,7 +128,7 @@ class Tensor:
         return output
 
     def __neg__(self):
-        return -1 * self
+        return self * -1
 
     def __add__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
@@ -160,7 +163,9 @@ class Tensor:
             if self.require_grad:
                 self.grad += Tensor._sum_if_broadcasting_occured(output.grad, self.grad)
             if other.require_grad:
-                other.grad += Tensor._sum_if_broadcasting_occured(-1 * output.grad, other.grad)#type: ignore
+                other.grad += Tensor._sum_if_broadcasting_occured(
+                    -1 * output.grad, other.grad
+                )  # type: ignore
 
         output._backward = backward
         return output
@@ -171,15 +176,21 @@ class Tensor:
         # The broadcast method will raise a broadcast exception if it's not broadcastable
         Tensor.can_broadcast(self.data, other.data)
 
-        output = Tensor(np.power(self.data, other.data), children=(self, other), label="pow")
+        output = Tensor(
+            np.power(self.data, other.data), children=(self, other), label="pow"
+        )
 
         def backward():
             if self.require_grad:
                 self.grad += Tensor._sum_if_broadcasting_occured(
-                    other.data * (self.data ** (other.data - 1)) * output.grad.data, self.grad)  # type: ignore
+                    other.data * (self.data ** (other.data - 1)) * output.grad.data,
+                    self.grad,
+                )  # type: ignore
             if other.require_grad:
                 other.grad += Tensor._sum_if_broadcasting_occured(
-                    np.log(self.data) * (self.data**other.data) * output.grad.data,other.grad)  # type: ignore
+                    np.log(self.data) * (self.data**other.data) * output.grad.data,
+                    other.grad,
+                )  # type: ignore
 
         output._backward = backward
         return output
@@ -203,25 +214,34 @@ class Tensor:
         def backward():
             if self.require_grad:
                 output_grad = (
-                    Tensor.expand_dims(output.grad, 1) if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
+                    Tensor.expand_dims(output.grad, 1)
+                    if (len(output.grad.shape) == 1)
+                    else output.grad
+                )  # type: ignore
                 tmp = Tensor._broadcast_for_gradient(output_grad, self, other)
                 current_grad = (
                     output_grad * tmp
-                    if (len(output.grad.shape) == 1) else output_grad @ tmp.T())  # type: ignore
+                    if (len(output.grad.shape) == 1)
+                    else output_grad @ tmp.T()
+                )  # type: ignore
                 self.grad += Tensor._sum_if_broadcasting_occured(
                     current_grad, self.grad
                 )
             if other.require_grad:
                 output_grad = (
                     Tensor.expand_dims(output.grad, 1)
-                    if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
+                    if (len(output.grad.shape) == 1)
+                    else output.grad
+                )  # type: ignore
                 if self.T().shape[-1] != output_grad.shape[-min(output_grad.ndim, 2)]:  # type: ignore
                     tmp = Tensor._broadcast_for_gradient(output_grad, other, self)
                 else:
                     tmp = self
                 current_grad = (
                     tmp * output_grad
-                    if (len(output.grad.shape) == 1) else tmp.T() @ output_grad)  # type: ignore
+                    if (len(output.grad.shape) == 1)
+                    else tmp.T() @ output_grad
+                )  # type: ignore
                 other.grad += Tensor._sum_if_broadcasting_occured(
                     current_grad, other.grad
                 )
@@ -239,11 +259,32 @@ class Tensor:
         return other.__truediv__(self)
 
     def __truediv__(self, other):
-        return self * (other**-1)
+        other = (
+            Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
+        )
+
+        # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
+        Tensor.can_broadcast(self, other)
+
+        output = Tensor(self.data / other.data, label="Mul", children=(self, other))
+
+        def backward():
+            if self.require_grad:
+                self.grad += Tensor._sum_if_broadcasting_occured(
+                    (1 / other) * output.grad, self.grad
+                )
+            if other.require_grad:
+                other.grad += Tensor._sum_if_broadcasting_occured(
+                    (-self / other**2) * output.grad, other.grad
+                )
+
+        output._backward = backward
+
+        return output
+        # return self * (other**-1)
 
     def __rmul__(self, other):
         return self.__mul__(other)
-
 
     def __mul__(self, other):
         other = (
@@ -269,14 +310,14 @@ class Tensor:
 
         return output
 
-
-
     def __repr__(self) -> str:
         grad = self.grad.data if (isinstance(self.grad, Tensor)) else self.grad
         return f"\n| Tensor(data={self.data}, grad={grad}, shape={self.shape}, label={self.label}, require_grad={self.require_grad})"
 
     def sum(self, axis=None, keepdims=False):
-        output = Tensor(self.data.sum(axis, keepdims=keepdims), children=(self,), label="Sum")
+        output = Tensor(
+            self.data.sum(axis, keepdims=keepdims), children=(self,), label="Sum"
+        )
 
         def backward():
             # Sum function always assing 1 as gradient to each element
@@ -288,25 +329,28 @@ class Tensor:
         return output
 
     def softmax(self, dim=0):
-        numerator = Tensor(e) ** self
+        numerator = Tensor(e, require_grad=True) ** self
+        # print("Numerator is ", numerator)
         numerator.label = "Softmax-numerator"
+
         denominator = numerator.sum(dim, keepdims=True)
         denominator.label = "Softmax-denominator"
-        output = numerator/denominator
+
+        output = numerator / denominator
         output.label = "Softmax"
         return output
 
     def relu(self):
         _relu_out = np.maximum(self.data, 0)
-        output = Tensor(_relu_out, children=(self, ), label="ReLU")
+        output = Tensor(_relu_out, children=(self,), label="ReLU")
 
         def backward():
             _grad_out = (output.data > 0).astype(float)
             self.grad += Tensor(_grad_out) * output.grad
+
         output._backward = backward
 
         return output
-
 
     @staticmethod
     def _broadcast_for_gradient(prev_gradient, current, other):
@@ -331,7 +375,16 @@ class Tensor:
 
     def reshape(self, shape):
         data = self.data
-        return Tensor(np.reshape(data, shape), label="reshape")
+        output = Tensor(np.reshape(data, shape), children=(self,), label="reshape")
+        original_shape = self.shape
+
+        def backward():
+            if self.require_grad:
+                self.grad += output.grad.reshape(original_shape)
+
+        output._backward = backward
+
+        return output
 
     @staticmethod
     def _sum_if_broadcasting_occured(x, y):
@@ -409,3 +462,9 @@ class Tensor:
 
 if __name__ == "__main__":
     pass
+    a = Tensor([1, 2, 3, 4], require_grad=True, label="Input - A")
+    b = a.softmax()
+    ll = b
+    c = ll.sum()
+    c.backward()
+    print(a)
