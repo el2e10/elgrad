@@ -205,3 +205,5 @@ poetry.toml
 pyrightconfig.json
 
 .vscode
+
+*.csv

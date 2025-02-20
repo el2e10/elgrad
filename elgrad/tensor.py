@@ -266,7 +266,7 @@ class Tensor:
         # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
         Tensor.can_broadcast(self, other)
 
-        output = Tensor(self.data / other.data, label="Mul", children=(self, other))
+        output = Tensor(self.data / other.data, label="Div", children=(self, other))
 
         def backward():
             if self.require_grad:
@@ -322,21 +322,26 @@ class Tensor:
         def backward():
             # Sum function always assing 1 as gradient to each element
             if self.require_grad:
-                self.grad += Tensor.ones(self.shape)
+                self.grad += Tensor.ones(self.shape) * output.grad
+
+        output._backward = backward
+
+        return output
+
+    def exp(self):
+        output = Tensor(np.exp(self.data), children=(self, ), label="Exp")
+
+        def backward():
+            if self.require_grad:
+                self.grad += Tensor(output.data) * output.grad
 
         output._backward = backward
 
         return output
 
     def softmax(self, dim=0):
-        numerator = Tensor(e, require_grad=True) ** self
-        # print("Numerator is ", numerator)
-        numerator.label = "Softmax-numerator"
-
-        denominator = numerator.sum(dim, keepdims=True)
-        denominator.label = "Softmax-denominator"
-
-        output = numerator / denominator
+        numerator = self.exp()
+        output = numerator / numerator.sum(dim, keepdims=True)
         output.label = "Softmax"
         return output
 
@@ -462,9 +467,3 @@ class Tensor:
 
 if __name__ == "__main__":
     pass
-    a = Tensor([1, 2, 3, 4], require_grad=True, label="Input - A")
-    b = a.softmax()
-    ll = b
-    c = ll.sum()
-    c.backward()
-    print(a)

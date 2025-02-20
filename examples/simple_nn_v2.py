@@ -24,13 +24,14 @@ for i in range(TRAINING_LOOP):
 
     x2 = l1(x1)
     x2.label = "x2"
+    x3 = x2.relu()
     
-    x3 = l2(x2)
-    x3.label = "x3"
+    x4 = l2(x3)
+    x4.label = "x3"
 
-    x4 = l3(x3)
+    x5 = l3(x4)
     
-    loss = ((x4 - y.reshape((4, 1))) ** 2).sum()
+    loss = ((x5 - y.reshape((4, 1))) ** 2).sum()
     loss.label = "loss"
 
     l1.zero_grad()

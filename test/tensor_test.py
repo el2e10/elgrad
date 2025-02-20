@@ -1,4 +1,7 @@
+from math import e
 from typing import Union
+
+import numpy as np
 
 import pytest  # type: ignore
 from elgrad import Tensor, BroadcastError  # type: ignore
@@ -75,6 +78,21 @@ class TestSoftmax:
         a_grad = self.softmax_grad(a, 2)
         print(a_grad)
         a_grad_expected = Tensor([[[0.09, .2447, .6652], [0.0900, .2447, .6652]], [[0.0900, .2447, .6652], [.0900, .2447, .6652]]])
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+
+class TestMatExp:
+    def mat_exp_grad(self, x: Tensor):
+        c = x.exp()
+        d = c.sum()
+        d.backward()
+        return x.grad
+
+    def test_one(self):
+        a = Tensor([1, 2, 3], require_grad=True)
+        a_grad = self.mat_exp_grad(a)
+        print(a_grad)
+        a_grad_expected = Tensor([2.7183,  7.3891, 20.0855])
         assert Tensor.array_equal(a_grad, a_grad_expected)
 
 
@@ -186,7 +204,15 @@ class TestMatPow:
         b = Tensor([[1, 2, 3], [2, 2, 4]], require_grad=True)
 
         with pytest.raises(BroadcastError):
-            a_grad, b_grad = self.mat_pow_grad(a, b)#type: ignore
+            _, _ = self.mat_pow_grad(a, b)#type: ignore
+
+    def test_six(self):
+        a = Tensor([e], require_grad=True)
+        b = Tensor([1, 2, 3, 4], require_grad=True)
+
+        a_grad, b_grad = self.mat_pow_grad(a, b)
+        b_grad_expected, a_grad_expected = Tensor([2.7183, 7.3891, 20.0855, 54.5982]), Tensor([108.9459])
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
 
 class TestMatElemDiv:
