@@ -141,9 +141,7 @@ class Tensor:
             if self.require_grad:
                 self.grad += Tensor._sum_if_broadcasting_occured(output.grad, self.grad)
             if other.require_grad:
-                other.grad += Tensor._sum_if_broadcasting_occured(
-                    output.grad, other.grad
-                )
+                other.grad += Tensor._sum_if_broadcasting_occured(output.grad, other.grad)
 
         output._backward = backward
         return output
@@ -163,9 +161,7 @@ class Tensor:
             if self.require_grad:
                 self.grad += Tensor._sum_if_broadcasting_occured(output.grad, self.grad)
             if other.require_grad:
-                other.grad += Tensor._sum_if_broadcasting_occured(
-                    -1 * output.grad, other.grad
-                )  # type: ignore
+                other.grad += Tensor._sum_if_broadcasting_occured(-output.grad, other.grad)  # type: ignore
 
         output._backward = backward
         return output
@@ -182,15 +178,9 @@ class Tensor:
 
         def backward():
             if self.require_grad:
-                self.grad += Tensor._sum_if_broadcasting_occured(
-                    other.data * (self.data ** (other.data - 1)) * output.grad.data,
-                    self.grad,
-                )  # type: ignore
+                self.grad += Tensor._sum_if_broadcasting_occured(other.data * (self.data ** (other.data - 1)) * output.grad.data, self.grad)  # type: ignore
             if other.require_grad:
-                other.grad += Tensor._sum_if_broadcasting_occured(
-                    np.log(self.data) * (self.data**other.data) * output.grad.data,
-                    other.grad,
-                )  # type: ignore
+                other.grad += Tensor._sum_if_broadcasting_occured(np.log(self.data) * (self.data**other.data) * output.grad.data, other.grad)  # type: ignore
 
         output._backward = backward
         return output
@@ -213,38 +203,18 @@ class Tensor:
 
         def backward():
             if self.require_grad:
-                output_grad = (
-                    Tensor.expand_dims(output.grad, 1)
-                    if (len(output.grad.shape) == 1)
-                    else output.grad
-                )  # type: ignore
+                output_grad = ( Tensor.expand_dims(output.grad, 1) if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
                 tmp = Tensor._broadcast_for_gradient(output_grad, self, other)
-                current_grad = (
-                    output_grad * tmp
-                    if (len(output.grad.shape) == 1)
-                    else output_grad @ tmp.T()
-                )  # type: ignore
-                self.grad += Tensor._sum_if_broadcasting_occured(
-                    current_grad, self.grad
-                )
+                current_grad = (output_grad * tmp if (len(output.grad.shape) == 1) else output_grad @ tmp.T())  # type: ignore
+                self.grad += Tensor._sum_if_broadcasting_occured(current_grad, self.grad)
             if other.require_grad:
-                output_grad = (
-                    Tensor.expand_dims(output.grad, 1)
-                    if (len(output.grad.shape) == 1)
-                    else output.grad
-                )  # type: ignore
+                output_grad = (Tensor.expand_dims(output.grad, 1) if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
                 if self.T().shape[-1] != output_grad.shape[-min(output_grad.ndim, 2)]:  # type: ignore
                     tmp = Tensor._broadcast_for_gradient(output_grad, other, self)
                 else:
                     tmp = self
-                current_grad = (
-                    tmp * output_grad
-                    if (len(output.grad.shape) == 1)
-                    else tmp.T() @ output_grad
-                )  # type: ignore
-                other.grad += Tensor._sum_if_broadcasting_occured(
-                    current_grad, other.grad
-                )
+                current_grad = (tmp * output_grad if (len(output.grad.shape) == 1) else tmp.T() @ output_grad)  # type: ignore
+                other.grad += Tensor._sum_if_broadcasting_occured(current_grad, other.grad)
 
         output._backward = backward
 
@@ -466,4 +436,13 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    pass
+    
+    a = Tensor([1, 2, 3], require_grad=True)
+    b = Tensor([2], require_grad=True)
+
+    c = a.sum() * b
+
+    c.backward()
+    print(a, b)
+
+
