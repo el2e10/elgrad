@@ -1,6 +1,7 @@
 from math import e
 from typing import Union
 
+from elgrad.tensor import DotProductError
 import numpy as np
 
 import pytest  # type: ignore
@@ -529,6 +530,20 @@ class TestMatMul:
         return x.grad, y.grad
 
     def test_one(self):
+        a = Tensor([[1, 2], [4, 5]], require_grad=True)
+        b = Tensor([[10, 20], [40, 50]], require_grad=True)
+
+        a_grad, b_grad = self.matmul_grad(a, b)
+        print(a_grad, b_grad)
+        a_grad_expected, b_grad_expected = (
+            Tensor([[30, 90], [30, 90]]),
+            Tensor([[5, 5],[7, 7]]),
+        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
+            b_grad, b_grad_expected
+        )
+
+    def test_two(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
         b = Tensor([1, 2, 3], require_grad=True)
 
@@ -542,7 +557,7 @@ class TestMatMul:
             b_grad, b_grad_expected
         )
 
-    def test_two(self):
+    def test_three(self):
         a = Tensor([[1, 2, 3], [4, 5, 6]], require_grad=True)
         b = Tensor([44, 55, 66], require_grad=True)
 
@@ -555,8 +570,8 @@ class TestMatMul:
         assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
             b_grad, b_grad_expected
         )
-
-    def test_three(self):
+    #
+    def test_four(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
         b = Tensor([[1, 2, 3], [11, 22, 33], [44, 55, 66]], require_grad=True)
 
@@ -569,8 +584,8 @@ class TestMatMul:
         assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
             b_grad, b_grad_expected
         )
-
-    def test_four(self):
+    #
+    def test_five(self):
         a = Tensor([[1, 2], [3, 4], [5, 6]], require_grad=True)
         b = Tensor([[7, 8, 9, 10], [11, 12, 13, 14]], require_grad=True)
 
@@ -583,8 +598,8 @@ class TestMatMul:
         assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
             b_grad, b_grad_expected
         )
-
-    def test_five(self):
+    #
+    def test_six(self):
         a = Tensor([[1], [2], [3], [4], [5]], require_grad=True)
         b = Tensor([[6, 7, 8]], require_grad=True)
 
@@ -598,7 +613,7 @@ class TestMatMul:
             b_grad, b_grad_expected
         )
 
-    def test_six(self):
+    def test_seven(self):
         a = Tensor([[1, 2], [3, 4], [5, 6], [7, 8]], require_grad=True)
         b = Tensor([9, 8], require_grad=True)
 
@@ -611,3 +626,9 @@ class TestMatMul:
         assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
             b_grad, b_grad_expected
         )
+
+    def test_eight(self):
+        a = Tensor([1, 2], require_grad=True)
+        b = Tensor([[10, 20], [40,50]], require_grad=True)
+        with pytest.raises(DotProductError):
+            _, _ = self.matmul_grad(a, b)

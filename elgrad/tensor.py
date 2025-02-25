@@ -18,35 +18,21 @@ class DotProductError(Exception):
 
 class Tensor:
     def __init__(self, data, children=(), require_grad=None, label=""):
-        self.data = (
-            np.array(data, dtype=float)
-            if hasattr(data, "__len__")
-            else np.array([data], dtype=float)
-        )
+        self.data = (np.array(data, dtype=float) if hasattr(data, "__len__") else np.array([data], dtype=float))
         self.shape = self.data.shape
         self.ndim = len(self.shape)
         if require_grad or require_grad is None:
-            self.require_grad = require_grad or any(
-                [child.require_grad for child in children]
-            )
+            self.require_grad = require_grad or any([child.require_grad for child in children])
         else:
             self.require_grad = False
-        self.grad = (
-            Tensor.zeros(self.shape, False, label=f"{label} grad")
-            if self.require_grad
-            else None
-        )
+        self.grad = Tensor.zeros(self.shape, False, label=f"{label} grad") if self.require_grad else None
         self.children = children
         self.label = label
         self._backward = lambda: None
         self._current_index = 0
 
     def zero_grad(self):
-        self.grad = (
-            Tensor.zeros(self.grad.shape, require_grad=False)
-            if self.require_grad
-            else None
-        )  # type: ignore
+        self.grad = Tensor.zeros(self.grad.shape, require_grad=False) if self.require_grad else None  # type: ignore
 
     @staticmethod
     def ones(shape: Union[int, Tuple, List[int]]):
@@ -57,6 +43,7 @@ class Tensor:
         return Tensor(np.zeros(shape), require_grad=require_grad, label=label)
 
     def T(self):
+        # data = np.atleast_2d(self.data) if(len(self.shape) == 1) else self.data
         data = np.transpose(self.data)
         output = Tensor(data, children=(self,), label=f"{self.label}.T")
 
@@ -118,10 +105,7 @@ class Tensor:
         output = Tensor(np.log(self.data), children=(self,), label="log")
 
         def backward():
-            tmp = Tensor._sum_if_broadcasting_occured(
-                output.grad * Tensor(1 / self.data), output.grad
-            )
-            self.grad += tmp
+            self.grad += Tensor._sum_if_broadcasting_occured(output.grad * Tensor(1 / self.data), output.grad)
 
         output._backward = backward
 
@@ -202,19 +186,14 @@ class Tensor:
         )
 
         def backward():
+
+            output_grad = Tensor.expand_dims(output.grad, 1) if(output.grad.ndim == 1) else output.grad #type: ignore
+            other_data = Tensor.expand_dims(other.data, 1) if(other.data.ndim == 1) else other
+            self_data = Tensor.expand_dims(self.data, 1) if(self.data.ndim == 1) else self
             if self.require_grad:
-                output_grad = ( Tensor.expand_dims(output.grad, 1) if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
-                tmp = Tensor._broadcast_for_gradient(output_grad, self, other)
-                current_grad = (output_grad * tmp if (len(output.grad.shape) == 1) else output_grad @ tmp.T())  # type: ignore
-                self.grad += Tensor._sum_if_broadcasting_occured(current_grad, self.grad)
+                self.grad += (output_grad @ other_data.T()).reshape(self.grad.shape) #type: ignore
             if other.require_grad:
-                output_grad = (Tensor.expand_dims(output.grad, 1) if (len(output.grad.shape) == 1) else output.grad)  # type: ignore
-                if self.T().shape[-1] != output_grad.shape[-min(output_grad.ndim, 2)]:  # type: ignore
-                    tmp = Tensor._broadcast_for_gradient(output_grad, other, self)
-                else:
-                    tmp = self
-                current_grad = (tmp * output_grad if (len(output.grad.shape) == 1) else tmp.T() @ output_grad)  # type: ignore
-                other.grad += Tensor._sum_if_broadcasting_occured(current_grad, other.grad)
+                other.grad += (self_data.T() @ output_grad).reshape(other.grad.shape) #type: ignore
 
         output._backward = backward
 
@@ -240,13 +219,9 @@ class Tensor:
 
         def backward():
             if self.require_grad:
-                self.grad += Tensor._sum_if_broadcasting_occured(
-                    (1 / other) * output.grad, self.grad
-                )
+                self.grad += Tensor._sum_if_broadcasting_occured((1 / other) * output.grad, self.grad)
             if other.require_grad:
-                other.grad += Tensor._sum_if_broadcasting_occured(
-                    (-self / other**2) * output.grad, other.grad
-                )
+                other.grad += Tensor._sum_if_broadcasting_occured((-self / other**2) * output.grad, other.grad)
 
         output._backward = backward
 
@@ -268,14 +243,9 @@ class Tensor:
 
         def backward():
             if self.require_grad:
-                self.grad += Tensor._sum_if_broadcasting_occured(
-                    other * output.grad, self.grad
-                )
+                self.grad += Tensor._sum_if_broadcasting_occured(other * output.grad, self.grad)
             if other.require_grad:
-                other.grad += Tensor._sum_if_broadcasting_occured(
-                    self * output.grad, other.grad
-                )
-
+                other.grad += Tensor._sum_if_broadcasting_occured(self * output.grad, other.grad)
         output._backward = backward
 
         return output
@@ -327,27 +297,7 @@ class Tensor:
 
         return output
 
-    @staticmethod
-    def _broadcast_for_gradient(prev_gradient, current, other):
-        # TODO: Optimize this function, I have to manually add a condition in matmul
-
-        if prev_gradient.shape[-1] == other.T().shape[-min(other.ndim, 2)]:
-            return other
-        try:
-            Tensor.can_broadcast(prev_gradient, other)
-            return prev_gradient * other
-        except BroadcastError:
-            pass
-
-        c_shape = current.shape
-        broadcast_dimension = Tensor.can_broadcast(current, other)
-
-        if broadcast_dimension == c_shape:
-            result = Tensor(np.broadcast_to(other.data, c_shape))
-        else:
-            result = other
-        return result
-
+    
     def reshape(self, shape):
         data = self.data
         output = Tensor(np.reshape(data, shape), children=(self,), label="reshape")
@@ -364,10 +314,7 @@ class Tensor:
     @staticmethod
     def _sum_if_broadcasting_occured(x, y):
         # If broadcasting occured between two tensors during an operation we have to sum the gradient along the axis where broadcasting occured
-        x_shape, y_shape = (
-            x.shape if hasattr(x, "shape") else (1,),
-            y.shape if hasattr(y, "shape") else (1,),
-        )
+        x_shape, y_shape = x.shape if hasattr(x, "shape") else (1,), y.shape if hasattr(y, "shape") else (1,)
         x_dim, y_dim = len(x_shape), len(y_shape)
         difference = abs(x_dim - y_dim)
         broadcast_axis = []
@@ -385,11 +332,7 @@ class Tensor:
             i += 1
 
         # Need to reshape because the grad should have the same shape as vector
-        return (
-            x.sum(axis=tuple(broadcast_axis)).reshape(y.shape)
-            if (len(broadcast_axis) > 0)
-            else x
-        )
+        return x.sum(axis=tuple(broadcast_axis)).reshape(y.shape) if (len(broadcast_axis) > 0) else x
 
     @staticmethod
     def full(shape, fill_value):
@@ -436,13 +379,5 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    
-    a = Tensor([1, 2, 3], require_grad=True)
-    b = Tensor([2], require_grad=True)
-
-    c = a.sum() * b
-
-    c.backward()
-    print(a, b)
-
+    pass    
 
