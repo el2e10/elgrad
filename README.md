@@ -10,3 +10,7 @@ and I drew further inspiration from George Hotz's [tinygrad](https://github.com/
 ## Resource
 - [Python Array API Standards](https://data-apis.org/array-api/latest/index.html)
 - [Matrix Calculus](https://arxiv.org/pdf/1802.01528)
+
+## Examples
+- Simple neural network [COMPLETED]
+- Word2Vec [IN PROGRESS]

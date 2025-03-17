@@ -1,3 +1,7 @@
+### Custom ###
+*.csv
+**/data/**
+*.ipynb
 
 ### macOS ###
 # General
@@ -206,4 +210,4 @@ pyrightconfig.json
 
 .vscode
 
-*.csv
+
