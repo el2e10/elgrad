@@ -1,4 +1,4 @@
-from math import e
+from math import e, prod
 from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
@@ -44,7 +44,9 @@ class Tensor:
 
     def T(self):
         # data = np.atleast_2d(self.data) if(len(self.shape) == 1) else self.data
-        data = np.transpose(self.data)
+        axes =   tuple(range(self.data.ndim)[:-2]) + (-1, -2) if self.data.ndim > 2 else None
+        print(self.data.shape, axes)
+        data = np.transpose(self.data, axes=axes)
         output = Tensor(data, children=(self,), label=f"{self.label}.T")
 
         def backward():
@@ -255,14 +257,26 @@ class Tensor:
         return f"\n| Tensor(data={self.data}, grad={grad}, shape={self.shape}, label={self.label}, require_grad={self.require_grad})"
 
     def sum(self, axis=None, keepdims=False):
-        output = Tensor(
-            self.data.sum(axis, keepdims=keepdims), children=(self,), label="Sum"
-        )
+        output = Tensor(self.data.sum(axis, keepdims=keepdims), children=(self,), label="Sum")
 
         def backward():
             # Sum function always assing 1 as gradient to each element
             if self.require_grad:
                 self.grad += Tensor.ones(self.shape) * output.grad
+
+        output._backward = backward
+
+        return output
+
+    def mean(self, axis=None, keepdims=False):
+        output = Tensor(self.data.mean(axis, keepdims=keepdims), children=(self, ), label="Mean")
+
+        def backward():
+            if self.require_grad:
+                v = prod(self.shape) if axis == None else self.shape[axis]
+                output_grad = Tensor.expand_dims(output.grad, axis) if axis != None else output.grad
+                print(output.grad, self.grad)
+                self.grad += Tensor.full(self.shape, 1/v) * output_grad
 
         output._backward = backward
 
