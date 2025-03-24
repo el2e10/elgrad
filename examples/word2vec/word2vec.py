@@ -12,7 +12,7 @@ from elgrad import Tensor, Linear
 
 def create_one_hot_encoding() -> Dict[str, list[int]]:
     vocab:list[str] = []
-    with open("examples/word2vec/data/vocab.csv", 'r', newline='') as fp:
+    with open("examples/word2vec/data/vocab_2.csv", 'r', newline='') as fp:
         rdr = reader(fp, delimiter=',')
         for word in rdr:
             vocab.append(word[0])
@@ -29,13 +29,17 @@ def get_embedding(word: str) -> list[int]:
 
 def load_data():
     result = []
-    with open("examples/word2vec/data/train.csv", 'r', newline='') as fp:
+    with open("examples/word2vec/data/train_2.csv", 'r', newline='') as fp:
         rdr = reader(fp, delimiter=',')
-        for row in rdr:
+        for index, row in enumerate(rdr):
+            if(len(row) != 5):
+                print(index)
+                break
             embeddings = [get_embedding(word) for word in row]
             result.append(embeddings)
 
     array = np.array(result, dtype="int")
+    print(array.shape)
     return array[:,:4,:], array[:, -1, :]
 
 vocabulary: Dict[str, list[int]] = create_one_hot_encoding()
@@ -44,24 +48,31 @@ x, y = load_data()
 x = Tensor(x, label="X")
 y = Tensor(y, label="y")
 
-layer1 = Linear(140, 40, label="Layer 1")
-layer2 = Linear(40, 140, label="Layer 2")
+layer1 = Linear(111, 40, label="Layer 1")
+layer2 = Linear(40, 111, label="Layer 2")
 
 LEARNING_RATE = 0.03
-EPOCHS = 25
+EPOCHS = 3
 
 for i in range(EPOCHS):
-    for sample in x:
-        x1 = layer1(sample)
-        e1 = x1.sum(axis=0, keepdims=True)
+    x1 = layer1(x)
+    e1 = x1.sum(axis=1, keepdims=True)
 
-        x2 = layer2(e1)
-        z2 = x2.softmax(dim=1)
+    x2 = layer2(e1)
+    z2 = x2.softmax(dim=2)
 
-        print(z2)
-        print("row -> ", sample.shape, "w1 ->", layer1.w.shape, "x1 -> ", x1.shape, "e1 -> ", e1.shape, "x2 -> ", x2.shape, "z2 -> ",z2.shape)
-        break
-    break
+    print("row -> ", x.shape, "w1 ->", layer1.w.shape, "x1 -> ", x1.shape, "e1 -> ", e1.shape, "x2 -> ", x2.shape, "z2 -> ",z2.shape)
+    loss = -(y * z2.log()).sum()/328.0
+    loss.label = "Loss"
+    print(f"Loss at {i}th iteration is {loss}")
+
+    layer1.zero_grad()
+    layer2.zero_grad()
+
+    loss.backward()
+    
+    layer1.learn(LEARNING_RATE)
+    layer2.learn(LEARNING_RATE)
 
 
 

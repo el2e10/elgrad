@@ -45,7 +45,6 @@ class Tensor:
     def T(self):
         # data = np.atleast_2d(self.data) if(len(self.shape) == 1) else self.data
         axes =   tuple(range(self.data.ndim)[:-2]) + (-1, -2) if self.data.ndim > 2 else None
-        print(self.data.shape, axes)
         data = np.transpose(self.data, axes=axes)
         output = Tensor(data, children=(self,), label=f"{self.label}.T")
 
@@ -173,6 +172,11 @@ class Tensor:
 
     def __matmul__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
+        original_self = self
+
+        if(self.ndim == 1 and other.ndim == 2):
+            self = Tensor.expand_dims(self, 0) 
+
 
         # Checking if the mat mul can be performed
         # Refer for more info https://data-apis.org/array-api/latest/API_specification/generated/array_api.matmul.html#array_api.matmul
@@ -187,15 +191,19 @@ class Tensor:
             np.matmul(self.data, other.data), children=(self, other), label="matmul"
         )
 
-        def backward():
+        self = original_self
 
+        def backward():
             output_grad = Tensor.expand_dims(output.grad, 1) if(output.grad.ndim == 1) else output.grad #type: ignore
-            other_data = Tensor.expand_dims(other.data, 1) if(other.data.ndim == 1) else other
-            self_data = Tensor.expand_dims(self.data, 1) if(self.data.ndim == 1) else self
+            ne_other = Tensor.reshape(other, (other.shape[0], 1)) if (other.ndim == 1) else other
+            self_data = Tensor.expand_dims(self.data, 0) if(self.data.ndim == 1) else self
+
             if self.require_grad:
-                self.grad += (output_grad @ other_data.T()).reshape(self.grad.shape) #type: ignore
+                self.grad += (output_grad @ ne_other.T()).reshape(self.grad.shape) #type: ignore
             if other.require_grad:
-                other.grad += (self_data.T() @ output_grad).reshape(other.grad.shape) #type: ignore
+                ne_other.grad += (self_data.T() @ output_grad)
+                other.grad = ne_other.grad.reshape(other.grad.shape) #type: ignore
+
 
         output._backward = backward
 
@@ -203,7 +211,9 @@ class Tensor:
 
     @staticmethod
     def expand_dims(tensor, axis):
-        return Tensor(np.expand_dims(tensor.data, axis=axis))
+        # grad = None if(tensor.grad is None) else 
+        tensor = tensor if(isinstance(tensor, Tensor)) else Tensor(tensor)
+        return Tensor(np.expand_dims(tensor.data, axis=axis), label=tensor.label, require_grad=tensor.require_grad, children=tensor.children)
 
     def __rtruediv__(self, other):
         other = Tensor(other)
@@ -261,6 +271,7 @@ class Tensor:
 
         def backward():
             # Sum function always assing 1 as gradient to each element
+            print("Inside sum ", self.shape)
             if self.require_grad:
                 self.grad += Tensor.ones(self.shape) * output.grad
 
@@ -275,7 +286,6 @@ class Tensor:
             if self.require_grad:
                 v = prod(self.shape) if axis == None else self.shape[axis]
                 output_grad = Tensor.expand_dims(output.grad, axis) if axis != None else output.grad
-                print(output.grad, self.grad)
                 self.grad += Tensor.full(self.shape, 1/v) * output_grad
 
         output._backward = backward
@@ -393,5 +403,16 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    pass    
+    def matmul_grad(x: Tensor, y: Tensor):
+        c: Tensor = x @ y
+        d = c.sum()
+        d.backward()
+        return x.grad, y.grad
+
+    a = Tensor([1, 2], require_grad=True, label="A")
+    b = Tensor([[1, 2, 3], [1, 2, 4]], require_grad=True, label="B")
+
+
+    a_grad, b_grad = matmul_grad(a, b)
+    print(a_grad, b_grad)
 
