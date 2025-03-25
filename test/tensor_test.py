@@ -718,6 +718,47 @@ class TestMatMul:
             b_grad, b_grad_expected
         )
 
+    def test_ten(self):
+        a = Tensor([[[1., 2., 3], [1., 2, 3.]], [[2, 3, 4],[1, 2, 4]]], require_grad=True)
+        b = Tensor([1, 2., 4.], require_grad=True)
+
+        a_grad, b_grad = self.matmul_grad(a, b)
+        print("Actual value is ", a_grad, b_grad)
+        a_grad_expected, b_grad_expected = (
+            Tensor([[[1., 2., 4.], [1, 2, 4]], [[1, 2, 4], [1, 2, 4]]]),
+            Tensor([5., 9., 14.]),
+        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
+            b_grad, b_grad_expected
+        )
+
+    def test_eleven(self):
+        a = Tensor([1, 2.], require_grad=True)
+        b = Tensor([[[1., 2., 3], [1., 2, 3.]], [[2, 3, 4],[1, 2, 4]]], require_grad=True)
+
+        a_grad, b_grad = self.matmul_grad(a, b)
+        print("Actual value is ", a_grad, b_grad)
+        a_grad_expected, b_grad_expected = (
+            Tensor([15., 13.]),
+            Tensor([[[1., 1., 1.], [2, 2, 2]], [[1, 1, 1], [2, 2, 2]]]),
+        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
+            b_grad, b_grad_expected
+        )
+
+    def test_twelve(self):
+        a = Tensor([[[1., 2.], [1., 2]], [[2, 3],[1, 2]]], require_grad=True)
+        b = Tensor([[[1., 2., 3], [1., 2, 3.]], [[2, 3, 4],[1, 2, 4]]], require_grad=True)
+
+        a_grad, b_grad = self.matmul_grad(a, b)
+        print("Actual value is ", a_grad, b_grad)
+        a_grad_expected, b_grad_expected = (
+            Tensor([[[6, 6], [6, 6]], [[9, 7], [9, 7]]]),
+            Tensor([[[2., 2., 2.], [4, 4, 4]], [[3, 3, 3], [5, 5, 5]]]),
+        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
+            b_grad, b_grad_expected
+        )
 
 class TestMean:
     def matmean_grad(self, x: Tensor, axis: Union[int, None] = None):

@@ -172,10 +172,13 @@ class Tensor:
 
     def __matmul__(self, other):
         other = other if isinstance(other, Tensor) else Tensor(other)
-        original_self = self
+        original_self, original_other = self, other
 
-        if(self.ndim == 1 and other.ndim == 2):
+        # Refer for more info https://pytorch.org/docs/stable/generated/torch.matmul.html
+        if(self.ndim == 1 and other.ndim >= 2):
             self = Tensor.expand_dims(self, 0) 
+        elif(self.ndim >= 2 and other.ndim == 1):
+            other = Tensor.expand_dims(other, 1)
 
 
         # Checking if the mat mul can be performed
@@ -191,7 +194,7 @@ class Tensor:
             np.matmul(self.data, other.data), children=(self, other), label="matmul"
         )
 
-        self = original_self
+        self, other = original_self, original_other
 
         def backward():
             output_grad = Tensor.expand_dims(output.grad, 1) if(output.grad.ndim == 1) else output.grad #type: ignore
@@ -199,11 +202,10 @@ class Tensor:
             self_data = Tensor.expand_dims(self.data, 0) if(self.data.ndim == 1) else self
 
             if self.require_grad:
-                self.grad += (output_grad @ ne_other.T()).reshape(self.grad.shape) #type: ignore
+                self.grad += Tensor._sum_if_broadcasting_occured(output_grad @ ne_other.T(), self.grad).reshape(self.grad.shape) #type: ignore
             if other.require_grad:
-                ne_other.grad += (self_data.T() @ output_grad)
+                ne_other.grad += Tensor._sum_if_broadcasting_occured(self_data.T() @ output_grad, ne_other.grad)
                 other.grad = ne_other.grad.reshape(other.grad.shape) #type: ignore
-
 
         output._backward = backward
 
@@ -271,7 +273,6 @@ class Tensor:
 
         def backward():
             # Sum function always assing 1 as gradient to each element
-            print("Inside sum ", self.shape)
             if self.require_grad:
                 self.grad += Tensor.ones(self.shape) * output.grad
 
@@ -409,10 +410,10 @@ if __name__ == "__main__":
         d.backward()
         return x.grad, y.grad
 
-    a = Tensor([1, 2], require_grad=True, label="A")
-    b = Tensor([[1, 2, 3], [1, 2, 4]], require_grad=True, label="B")
+    a = Tensor([[[1., 2., 3], [1., 2, 3.]], [[2, 3, 4],[1, 2, 4]]], require_grad=True, label="A")
+    b = Tensor([1, 2, 4.], require_grad=True, label="B")
 
 
     a_grad, b_grad = matmul_grad(a, b)
-    print(a_grad, b_grad)
+    print("A grad -> ",a_grad, "\nB grad ->", b_grad)
 
