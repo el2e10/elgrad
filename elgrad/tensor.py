@@ -274,7 +274,8 @@ class Tensor:
         def backward():
             # Sum function always assing 1 as gradient to each element
             if self.require_grad:
-                self.grad += Tensor.ones(self.shape) * output.grad
+                output_grad = Tensor.expand_dims(output.grad, axis) if(not keepdims and axis is not None) else output.grad
+                self.grad += Tensor.ones(self.shape) * output_grad
 
         output._backward = backward
 
@@ -285,8 +286,8 @@ class Tensor:
 
         def backward():
             if self.require_grad:
-                v = prod(self.shape) if axis == None else self.shape[axis]
-                output_grad = Tensor.expand_dims(output.grad, axis) if axis != None else output.grad
+                v = prod(self.shape) if axis is None else self.shape[axis]
+                output_grad = Tensor.expand_dims(output.grad, axis) if(axis is not None and not keepdims) else output.grad
                 self.grad += Tensor.full(self.shape, 1/v) * output_grad
 
         output._backward = backward
@@ -404,16 +405,14 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    def matmul_grad(x: Tensor, y: Tensor):
-        c: Tensor = x @ y
+    def mat_sum_grad(x: Tensor, axis: Union[int, None], keepdims: bool=False):
+        c: Tensor = x.sum(axis=axis, keepdims=keepdims)
+        print(c)
         d = c.sum()
         d.backward()
-        return x.grad, y.grad
+        return x.grad
 
-    a = Tensor([[[1., 2., 3], [1., 2, 3.]], [[2, 3, 4],[1, 2, 4]]], require_grad=True, label="A")
-    b = Tensor([1, 2, 4.], require_grad=True, label="B")
-
-
-    a_grad, b_grad = matmul_grad(a, b)
-    print("A grad -> ",a_grad, "\nB grad ->", b_grad)
+    a = Tensor([[[1, 2, 3]], [[1, 2, 4]]], require_grad=True)
+    a_grad = mat_sum_grad(a, 1, False)
+    print("A grad -> ",a_grad)
 

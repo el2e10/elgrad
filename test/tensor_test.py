@@ -790,3 +790,57 @@ class TestMean:
         a_grad_expected = Tensor([[0.3333, 0.3333, 0.3333], [0.3333, 0.3333, 0.3333]])
 
         assert Tensor.array_equal(a_grad, a_grad_expected)
+
+
+class TestSum:
+    def mat_sum_grad(self, x: Tensor, axis: Union[int, None] = None, keepdims: bool = True):
+        c: Tensor = x.sum(axis=axis, keepdims=keepdims)
+        print(c)
+        d = c.sum()
+        d.backward()
+        return x.grad
+
+    def test_one(self):
+        a = Tensor([[1, 2, 3], [1, 2, 4]], require_grad=True)
+        a_grad = self.mat_sum_grad(a, axis=1, keepdims=False)
+        print(a_grad)
+        a_grad_expected = Tensor([[1, 1, 1], [1, 1, 1]])
+
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+        
+    def test_two(self):
+        a = Tensor([[1, 2, 3], [1, 2, 4]], require_grad=True)
+        a_grad = self.mat_sum_grad(a, axis=1, keepdims=True)
+        print(a_grad)
+        a_grad_expected = Tensor([[1, 1, 1], [1, 1, 1]])
+
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_three(self):
+        a = Tensor([[[1, 2, 3]], [[1, 2, 4]]], require_grad=True)
+        a_grad = self.mat_sum_grad(a, axis=1, keepdims=False)
+        print(a_grad,  "end")
+        a_grad_expected = Tensor([[[1, 1, 1]], [[1, 1, 1]]])
+
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_four(self):
+        a = Tensor([[[1, 2, 3]], [[1, 2, 4]]], require_grad=True)
+        a_grad = self.mat_sum_grad(a, axis=2, keepdims=False)
+        print(a_grad,  "end")
+        a_grad_expected = Tensor([[[1, 1, 1]], [[1, 1, 1]]])
+
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+    def test_five(self):
+        a = Tensor([[[1, 2, 3]], [[1, 2, 4]]], require_grad=True)
+        a_grad = self.mat_sum_grad(a, axis=2, keepdims=True)
+        print(a_grad,  "end")
+        a_grad_expected = Tensor([[[1, 1, 1]], [[1, 1, 1]]])
+
+        assert Tensor.array_equal(a_grad, a_grad_expected)
+
+
+
+
+
