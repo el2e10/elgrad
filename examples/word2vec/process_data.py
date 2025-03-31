@@ -5,14 +5,14 @@ STOP_WORDS = {"i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you"
 
 def remove_stopwords(sentence: str) -> str:
     sentence_arr: List[str] = sentence.split(' ')
-    return ' '.join(sentence_arr)
-    # result_arr: List[str] = []
-    # for word in sentence_arr:
-    #     if(word in STOP_WORDS):
-    #         continue
-    #     result_arr.append(word)
-    #
-    # return ' '.join(result_arr)
+    # return ' '.join(sentence_arr)
+    result_arr: List[str] = []
+    for word in sentence_arr:
+        if(word in STOP_WORDS):
+            continue
+        result_arr.append(word)
+
+    return ' '.join(result_arr)
 
 
 
@@ -35,7 +35,7 @@ def remove_non_word(data: List[str]) -> List[str]:
 
 
 if __name__ == "__main__":
-    FILE_PATH = "data/data3.txt"
+    FILE_PATH = "examples/word2vec/data/data4.txt"
     with open(FILE_PATH, "r") as fp:
         text = fp.readlines()
 
@@ -53,6 +53,6 @@ if __name__ == "__main__":
             data_without_stopwords.append(clean_line)
 
      
-    with open("data/data_dump.txt", 'w') as fp:
+    with open("examples/word2vec/data/data_dump_4.txt", 'w') as fp:
         for line in data_without_stopwords:
             print(line, file=fp)

@@ -3,11 +3,11 @@ from typing import List
 from collections import Counter
 from itertools import chain 
 
-MAIN_FILE_PATH = "data"
+MAIN_FILE_PATH = "examples/word2vec/data"
 
 def load_dataset() -> List[str]:
     result: List[str] =[]
-    with open(f"{MAIN_FILE_PATH}/data_dump.txt", "r") as fp:
+    with open(f"{MAIN_FILE_PATH}/data_dump_4.txt", "r") as fp:
         result = fp.readlines()
 
     result = [line.strip() for line in result]
@@ -32,7 +32,7 @@ def create_vocabulary(data_dump: List[str])-> list[tuple[str, int]]:
     dataset_str = list(chain.from_iterable([x.split(' ') for x in data_dump]))
     c = Counter(dataset_str)  
     words = sorted(c.items(), key=lambda item: item[1], reverse=True)
-    with open("data/vocab.csv", "w", newline='') as fp:
+    with open("examples/word2vec/data/vocab_4.csv", "w", newline='') as fp:
         data_writer = writer(fp, delimiter=',') 
         data_writer.writerows(words)
 
@@ -47,6 +47,6 @@ if __name__ == '__main__':
     for sentence in data_dump:
         dataset += create_cbow_dataset(sentence)
 
-    with open("data/train.csv", 'w', newline='') as fp:
+    with open("examples/word2vec/data/train_4.csv", 'w', newline='') as fp:
         data_writer = writer(fp, delimiter=',')
         data_writer.writerows(dataset)

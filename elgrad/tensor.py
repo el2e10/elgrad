@@ -405,14 +405,4 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    def mat_sum_grad(x: Tensor, axis: Union[int, None], keepdims: bool=False):
-        c: Tensor = x.sum(axis=axis, keepdims=keepdims)
-        print(c)
-        d = c.sum()
-        d.backward()
-        return x.grad
-
-    a = Tensor([[[1, 2, 3]], [[1, 2, 4]]], require_grad=True)
-    a_grad = mat_sum_grad(a, 1, False)
-    print("A grad -> ",a_grad)
-
+    pass
