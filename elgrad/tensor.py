@@ -323,7 +323,6 @@ class Tensor:
 
         return output
 
-    
     def reshape(self, shape):
         data = self.data
         output = Tensor(np.reshape(data, shape), children=(self,), label="reshape")
@@ -331,11 +330,25 @@ class Tensor:
 
         def backward():
             if self.require_grad:
-                self.grad += output.grad.reshape(original_shape)
+                self.grad += output.grad.reshape(original_shape) #type: ignore
 
         output._backward = backward
 
         return output
+
+    def conv2d(self, filter):
+        filter = Tensor(filter) if(not isinstance(filter, Tensor)) else filter
+        i_h, i_w  = self.shape
+        f_h, f_w = filter.shape
+        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1), range(f_h, i_h+1)) for k, l in zip(range(0, i_w - f_w + 1), range(f_w, i_w + 1))]
+        print(i_h, i_w, f_h, f_w)
+        print(new_filter)
+        index = np.r_[tuple(new_filter)]
+        result = np.array([(self.data[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)])
+
+        o_h, o_w = (i_h - f_h + 1), (i_w - f_w + 1)
+
+        return (result @ filter.data.flatten()).reshape(o_h, o_w)
 
     @staticmethod
     def _sum_if_broadcasting_occured(x, y):
