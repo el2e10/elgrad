@@ -1,8 +1,9 @@
-from math import e, prod
+from math import e, prod, floor
 from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
 
+from .helper import check_conv2d_stride_shape
 
 class BroadcastError(Exception):
     def __init__(self, shape_1, shape_2):
@@ -336,17 +337,21 @@ class Tensor:
 
         return output
 
-    def conv2d(self, filter):
+    def conv2d(self, filter, stride = 1, padding=0):
+        status, message = check_conv2d_stride_shape(self, filter, stride)
+        assert status, message
+        
+        stride = tuple([stride, stride]) if isinstance(stride, int) else stride
+        print(stride, type(stride))
+
         filter = Tensor(filter) if(not isinstance(filter, Tensor)) else filter
-        i_h, i_w  = self.shape
-        f_h, f_w = filter.shape
-        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1), range(f_h, i_h+1)) for k, l in zip(range(0, i_w - f_w + 1), range(f_w, i_w + 1))]
-        print(i_h, i_w, f_h, f_w)
-        print(new_filter)
+        i_h, i_w, f_h, f_w  = (*self.shape, *filter.shape) #type: ignore
+        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1, stride[0]), range(f_h, i_h+1, stride[0])) for k, l in zip(range(0, i_w - f_w + 1, stride[1]), range(f_w, i_w + 1, stride[1]))]
         index = np.r_[tuple(new_filter)]
         result = np.array([(self.data[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)])
 
-        o_h, o_w = (i_h - f_h + 1), (i_w - f_w + 1)
+        o_h, o_w = floor((i_h + (2 * padding) - f_h)/stride[0] + 1), floor((i_w + (2 * padding) - f_w)/stride[1] + 1)
+        print(o_h,o_w)
 
         return (result @ filter.data.flatten()).reshape(o_h, o_w)
 

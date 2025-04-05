@@ -29,3 +29,18 @@ class TestConv2d:
         result = img.conv2d(filter)
         print(result)
         assert Tensor.array_equal(result, Tensor([[44, 54, 64], [84, 94, 104]]))
+
+    def test_four(self):
+        img = Tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12],  [13, 14, 15, 16]])
+        filter = Tensor([[1, 2], [3, 4]])
+        result = img.conv2d(filter, stride=1)
+        print(result)
+        assert Tensor.array_equal(result, Tensor([[44, 54, 64], [84, 94, 104], [124, 134, 144]]))
+
+    def test_five(self):
+        img = Tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12],  [13, 14, 15, 16]])
+        filter = Tensor([[1, 2], [3, 4]])
+        result = img.conv2d(filter, stride=2)
+        # print(result)
+        assert Tensor.array_equal(result, Tensor([[44, 64], [124, 144]]))
+
