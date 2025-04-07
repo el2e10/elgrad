@@ -3,7 +3,8 @@ from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
 
-from .helper import check_conv2d_stride_shape
+from helper import check_conv2d_stride_shape
+
 
 class BroadcastError(Exception):
     def __init__(self, shape_1, shape_2):
@@ -19,7 +20,7 @@ class DotProductError(Exception):
 
 class Tensor:
     def __init__(self, data, children=(), require_grad=None, label=""):
-        self.data = (np.array(data, dtype=float) if hasattr(data, "__len__") else np.array([data], dtype=float))
+        self.data = np.array(data, dtype=float) if hasattr(data, "__len__") else np.array([data], dtype=float)
         self.shape = self.data.shape
         self.ndim = len(self.shape)
         if require_grad or require_grad is None:
@@ -45,7 +46,7 @@ class Tensor:
 
     def T(self):
         # data = np.atleast_2d(self.data) if(len(self.shape) == 1) else self.data
-        axes =   tuple(range(self.data.ndim)[:-2]) + (-1, -2) if self.data.ndim > 2 else None
+        axes = tuple(range(self.data.ndim)[:-2]) + (-1, -2) if self.data.ndim > 2 else None
         data = np.transpose(self.data, axes=axes)
         output = Tensor(data, children=(self,), label=f"{self.label}.T")
 
@@ -158,15 +159,19 @@ class Tensor:
         # The broadcast method will raise a broadcast exception if it's not broadcastable
         Tensor.can_broadcast(self.data, other.data)
 
-        output = Tensor(
-            np.power(self.data, other.data), children=(self, other), label="pow"
-        )
+        output = Tensor(np.power(self.data, other.data), children=(self, other), label="pow")
 
         def backward():
             if self.require_grad:
-                self.grad += Tensor._sum_if_broadcasting_occured(other.data * (self.data ** (other.data - 1)) * output.grad.data, self.grad)  # type: ignore
+                self.grad += Tensor._sum_if_broadcasting_occured(
+                    other.data * (self.data ** (other.data - 1)) * output.grad.data,
+                    self.grad,
+                )  # type: ignore
             if other.require_grad:
-                other.grad += Tensor._sum_if_broadcasting_occured(np.log(self.data) * (self.data**other.data) * output.grad.data, other.grad)  # type: ignore
+                other.grad += Tensor._sum_if_broadcasting_occured(
+                    np.log(self.data) * (self.data**other.data) * output.grad.data,
+                    other.grad,
+                )  # type: ignore
 
         output._backward = backward
         return output
@@ -176,11 +181,10 @@ class Tensor:
         original_self, original_other = self, other
 
         # Refer for more info https://pytorch.org/docs/stable/generated/torch.matmul.html
-        if(self.ndim == 1 and other.ndim >= 2):
-            self = Tensor.expand_dims(self, 0) 
-        elif(self.ndim >= 2 and other.ndim == 1):
+        if self.ndim == 1 and other.ndim >= 2:
+            self = Tensor.expand_dims(self, 0)
+        elif self.ndim >= 2 and other.ndim == 1:
             other = Tensor.expand_dims(other, 1)
-
 
         # Checking if the mat mul can be performed
         # Refer for more info https://data-apis.org/array-api/latest/API_specification/generated/array_api.matmul.html#array_api.matmul
@@ -191,22 +195,20 @@ class Tensor:
         else:
             raise DotProductError
 
-        output = Tensor(
-            np.matmul(self.data, other.data), children=(self, other), label="matmul"
-        )
+        output = Tensor(np.matmul(self.data, other.data), children=(self, other), label="matmul")
 
         self, other = original_self, original_other
 
         def backward():
-            output_grad = Tensor.expand_dims(output.grad, 1) if(output.grad.ndim == 1) else output.grad #type: ignore
+            output_grad = Tensor.expand_dims(output.grad, 1) if (output.grad.ndim == 1) else output.grad  # type: ignore
             ne_other = Tensor.reshape(other, (other.shape[0], 1)) if (other.ndim == 1) else other
-            self_data = Tensor.expand_dims(self.data, 0) if(self.data.ndim == 1) else self
+            self_data = Tensor.expand_dims(self.data, 0) if (self.data.ndim == 1) else self
 
             if self.require_grad:
-                self.grad += Tensor._sum_if_broadcasting_occured(output_grad @ ne_other.T(), self.grad).reshape(self.grad.shape) #type: ignore
+                self.grad += Tensor._sum_if_broadcasting_occured(output_grad @ ne_other.T(), self.grad).reshape(self.grad.shape)  # type: ignore
             if other.require_grad:
                 ne_other.grad += Tensor._sum_if_broadcasting_occured(self_data.T() @ output_grad, ne_other.grad)
-                other.grad = ne_other.grad.reshape(other.grad.shape) #type: ignore
+                other.grad = ne_other.grad.reshape(other.grad.shape)  # type: ignore
 
         output._backward = backward
 
@@ -214,18 +216,21 @@ class Tensor:
 
     @staticmethod
     def expand_dims(tensor, axis):
-        # grad = None if(tensor.grad is None) else 
-        tensor = tensor if(isinstance(tensor, Tensor)) else Tensor(tensor)
-        return Tensor(np.expand_dims(tensor.data, axis=axis), label=tensor.label, require_grad=tensor.require_grad, children=tensor.children)
+        # grad = None if(tensor.grad is None) else
+        tensor = tensor if (isinstance(tensor, Tensor)) else Tensor(tensor)
+        return Tensor(
+            np.expand_dims(tensor.data, axis=axis),
+            label=tensor.label,
+            require_grad=tensor.require_grad,
+            children=tensor.children,
+        )
 
     def __rtruediv__(self, other):
         other = Tensor(other)
         return other.__truediv__(self)
 
     def __truediv__(self, other):
-        other = (
-            Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
-        )
+        other = Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
 
         # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
         Tensor.can_broadcast(self, other)
@@ -247,9 +252,7 @@ class Tensor:
         return self.__mul__(other)
 
     def __mul__(self, other):
-        other = (
-            Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
-        )
+        other = Tensor.full(self.shape, other) if isinstance(other, (int, float)) else other
 
         # Check if we the two tensors can be broadcasted. Raise a BroadcastError exception if not possible
         Tensor.can_broadcast(self, other)
@@ -261,6 +264,7 @@ class Tensor:
                 self.grad += Tensor._sum_if_broadcasting_occured(other * output.grad, self.grad)
             if other.require_grad:
                 other.grad += Tensor._sum_if_broadcasting_occured(self * output.grad, other.grad)
+
         output._backward = backward
 
         return output
@@ -275,7 +279,7 @@ class Tensor:
         def backward():
             # Sum function always assing 1 as gradient to each element
             if self.require_grad:
-                output_grad = Tensor.expand_dims(output.grad, axis) if(not keepdims and axis is not None) else output.grad
+                output_grad = Tensor.expand_dims(output.grad, axis) if (not keepdims and axis is not None) else output.grad
                 self.grad += Tensor.ones(self.shape) * output_grad
 
         output._backward = backward
@@ -283,20 +287,20 @@ class Tensor:
         return output
 
     def mean(self, axis=None, keepdims=False):
-        output = Tensor(self.data.mean(axis, keepdims=keepdims), children=(self, ), label="Mean")
+        output = Tensor(self.data.mean(axis, keepdims=keepdims), children=(self,), label="Mean")
 
         def backward():
             if self.require_grad:
                 v = prod(self.shape) if axis is None else self.shape[axis]
-                output_grad = Tensor.expand_dims(output.grad, axis) if(axis is not None and not keepdims) else output.grad
-                self.grad += Tensor.full(self.shape, 1/v) * output_grad
+                output_grad = Tensor.expand_dims(output.grad, axis) if (axis is not None and not keepdims) else output.grad
+                self.grad += Tensor.full(self.shape, 1 / v) * output_grad
 
         output._backward = backward
 
         return output
 
     def exp(self):
-        output = Tensor(np.exp(self.data), children=(self, ), label="Exp")
+        output = Tensor(np.exp(self.data), children=(self,), label="Exp")
 
         def backward():
             if self.require_grad:
@@ -331,34 +335,58 @@ class Tensor:
 
         def backward():
             if self.require_grad:
-                self.grad += output.grad.reshape(original_shape) #type: ignore
+                self.grad += output.grad.reshape(original_shape)  # type: ignore
 
         output._backward = backward
 
         return output
 
-    def conv2d(self, filter, stride = 1, padding=0):
+    def flatten(self):
+        data = self.data
+        output = Tensor(data.flatten(), children=(self,), label="flatten")
+        original_shape = self.shape
+
+        def backward():
+            if self.require_grad:
+                self.grad += output.grad.data.flatten(original_shape)  # type: ignore
+
+        output._backward = backward
+
+        return output
+
+    def conv2d(self, filter, stride=1, padding=0):
         status, message = check_conv2d_stride_shape(self, filter, stride)
         assert status, message
-        
+
         stride = tuple([stride, stride]) if isinstance(stride, int) else stride
-        print(stride, type(stride))
 
-        filter = Tensor(filter) if(not isinstance(filter, Tensor)) else filter
-        i_h, i_w, f_h, f_w  = (*self.shape, *filter.shape) #type: ignore
-        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1, stride[0]), range(f_h, i_h+1, stride[0])) for k, l in zip(range(0, i_w - f_w + 1, stride[1]), range(f_w, i_w + 1, stride[1]))]
+        filter = Tensor(filter) if (not isinstance(filter, Tensor)) else filter
+        i_h, i_w, f_h, f_w = (*self.shape, *filter.shape)  # type: ignore
+        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1, stride[0]), range(f_h, i_h + 1, stride[0])) for k, l in zip(range(0, i_w - f_w + 1, stride[1]), range(f_w, i_w + 1, stride[1]))]
         index = np.r_[tuple(new_filter)]
-        result = np.array([(self.data[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)])
+        # result = np.array([(self.data[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)])
+        result = Tensor(
+            [(self[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)],
+            require_grad=self.require_grad,
+            label="conv inter",
+            children=(self,),
+        )
 
-        o_h, o_w = floor((i_h + (2 * padding) - f_h)/stride[0] + 1), floor((i_w + (2 * padding) - f_w)/stride[1] + 1)
-        print(o_h,o_w)
+        o_h, o_w = (
+            floor((i_h + (2 * padding) - f_h) / stride[0] + 1),
+            floor((i_w + (2 * padding) - f_w) / stride[1] + 1),
+        )
+        # print(o_h,o_w)
 
-        return (result @ filter.data.flatten()).reshape(o_h, o_w)
+        return (result @ filter.flatten()).reshape((o_h, o_w))
 
     @staticmethod
     def _sum_if_broadcasting_occured(x, y):
         # If broadcasting occured between two tensors during an operation we have to sum the gradient along the axis where broadcasting occured
-        x_shape, y_shape = x.shape if hasattr(x, "shape") else (1,), y.shape if hasattr(y, "shape") else (1,)
+        x_shape, y_shape = (
+            x.shape if hasattr(x, "shape") else (1,),
+            y.shape if hasattr(y, "shape") else (1,),
+        )
         x_dim, y_dim = len(x_shape), len(y_shape)
         difference = abs(x_dim - y_dim)
         broadcast_axis = []
@@ -423,4 +451,9 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    pass
+    img = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True, label="Img")
+    filter = Tensor([[1, 2], [3, 4]], require_grad=True, label="Filter")
+    result = img.conv2d(filter)
+    sum = result.sum()
+    sum.backward()
+    print(img, filter, sum)

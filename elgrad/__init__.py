@@ -1,3 +1,3 @@
-from .tensor import Tensor, BroadcastError
-from .nn import Linear
-from .helper import *
+from elgrad.tensor import Tensor, BroadcastError
+from elgrad.nn import Linear
+from elgrad.helper import *
