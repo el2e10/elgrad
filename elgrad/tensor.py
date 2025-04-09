@@ -3,7 +3,7 @@ from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
 
-from helper import check_conv2d_stride_shape
+from .helper import check_conv2d_stride_shape
 
 
 class BroadcastError(Exception):
@@ -354,6 +354,28 @@ class Tensor:
 
         return output
 
+    def col2img(self, kernel_size, stride=1, padding=0):
+        first = self.reshape(shape=(2, 2, 2, 2))
+        # print(first[0][0:2].reshape(-1, 2, 2))
+        print(np.unique(first[0][0:2], axis=2))
+        # print(np.unique(first.data, axis=3))
+        return first
+
+    def img2col(self, kernel_size, stride: Union[int, tuple] = 1, padding=0):
+        stride = tuple([stride, stride]) if isinstance(stride, int) else stride
+
+        (i_h, i_w), (f_h, f_w) = self.shape, kernel_size
+        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1, stride[0]), range(f_h, i_h + 1, stride[0])) for k, l in zip(range(0, i_w - f_w + 1, stride[1]), range(f_w, i_w + 1, stride[1]))]
+        index = np.r_[tuple(new_filter)]
+
+        output = Tensor(
+            [(self[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)],
+            label="img2col",
+            children=(self,),
+        )
+
+        return output
+
     def conv2d(self, filter, stride=1, padding=0):
         status, message = check_conv2d_stride_shape(self, filter, stride)
         assert status, message
@@ -361,24 +383,16 @@ class Tensor:
         stride = tuple([stride, stride]) if isinstance(stride, int) else stride
 
         filter = Tensor(filter) if (not isinstance(filter, Tensor)) else filter
-        i_h, i_w, f_h, f_w = (*self.shape, *filter.shape)  # type: ignore
-        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1, stride[0]), range(f_h, i_h + 1, stride[0])) for k, l in zip(range(0, i_w - f_w + 1, stride[1]), range(f_w, i_w + 1, stride[1]))]
-        index = np.r_[tuple(new_filter)]
-        # result = np.array([(self.data[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)])
-        result = Tensor(
-            [(self[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)],
-            require_grad=self.require_grad,
-            label="conv inter",
-            children=(self,),
-        )
+        (i_h, i_w), (k_h, k_w) = self.shape, filter.shape
 
         o_h, o_w = (
-            floor((i_h + (2 * padding) - f_h) / stride[0] + 1),
-            floor((i_w + (2 * padding) - f_w) / stride[1] + 1),
+            floor((i_h + (2 * padding) - k_h) / stride[0] + 1),
+            floor((i_w + (2 * padding) - k_w) / stride[1] + 1),
         )
-        # print(o_h,o_w)
 
-        return (result @ filter.flatten()).reshape((o_h, o_w))
+        img2col_output = self.img2col(kernel_size=(k_h, k_w), stride=stride, padding=padding)
+
+        return (img2col_output @ filter.flatten()).reshape((o_h, o_w))
 
     @staticmethod
     def _sum_if_broadcasting_occured(x, y):
@@ -451,9 +465,4 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    img = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True, label="Img")
-    filter = Tensor([[1, 2], [3, 4]], require_grad=True, label="Filter")
-    result = img.conv2d(filter)
-    sum = result.sum()
-    sum.backward()
-    print(img, filter, sum)
+    pass

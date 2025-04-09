@@ -47,3 +47,9 @@ class TestConv2d:
         # print(result)
         assert Tensor.array_equal(result, Tensor([[44, 64], [124, 144]]))
 
+class TestCol2Img:
+    def test_one(self):
+        img = Tensor([[1, 2, 4, 5], [2, 3, 5, 6], [4, 5, 7, 8], [5, 6, 8, 9]])
+        result = img.col2img((2, 2))
+        expected_result = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        assert Tensor.array_equal(result, expected_result)
