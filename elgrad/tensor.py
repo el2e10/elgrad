@@ -3,7 +3,7 @@ from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
 
-from .helper import check_conv2d_stride_shape
+from .helper import check_conv2d_stride_shape, get_indices_for_img_col_transformation
 
 
 class BroadcastError(Exception):
@@ -392,19 +392,11 @@ class Tensor:
         return output
 
     def img2col(self, kernel_size, stride: Union[int, tuple] = 1, padding=0):
-        stride = tuple([stride, stride]) if isinstance(stride, int) else stride
         original_shape = self.shape
-
-        (i_h, i_w), (f_h, f_w) = self.shape, kernel_size
-        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1, stride[0]), range(f_h, i_h + 1, stride[0])) for k, l in zip(range(0, i_w - f_w + 1, stride[1]), range(f_w, i_w + 1, stride[1]))]
-        index = np.r_[tuple(new_filter)]
-
-        output = Tensor(
-            [(self[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)],
-            label="img2col",
-            children=(self,),
-        )
-
+        
+        i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
+        output = Tensor(self[i, j],label="img2col",children=(self,))
+        
         def backward():
             if self.require_grad:
                 self.grad += output.grad.col2img(original_shape, kernel_size, stride)  # type: ignore
