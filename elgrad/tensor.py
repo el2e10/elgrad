@@ -328,19 +328,6 @@ class Tensor:
 
         return output
 
-    def reshape(self, shape):
-        data = self.data
-        output = Tensor(np.reshape(data, shape), children=(self,), label="reshape")
-        original_shape = self.shape
-
-        def backward():
-            if self.require_grad:
-                self.grad += output.grad.reshape(original_shape)  # type: ignore
-
-        output._backward = backward
-
-        return output
-
     def flatten(self):
         data = self.data
         output = Tensor(data.flatten(), children=(self,), label="flatten")
@@ -354,25 +341,16 @@ class Tensor:
 
         return output
 
-    def col2img(self, kernel_size, stride=1, padding=0):
-        first = self.reshape(shape=(2, 2, 2, 2))
-        # print(first[0][0:2].reshape(-1, 2, 2))
-        print(np.unique(first[0][0:2], axis=2))
-        # print(np.unique(first.data, axis=3))
-        return first
+    def reshape(self, shape):
+        data = self.data
+        output = Tensor(np.reshape(data, shape), children=(self,), label="reshape")
+        original_shape = self.shape
 
-    def img2col(self, kernel_size, stride: Union[int, tuple] = 1, padding=0):
-        stride = tuple([stride, stride]) if isinstance(stride, int) else stride
+        def backward():
+            if self.require_grad:
+                self.grad += output.grad.reshape(original_shape)  # type: ignore
 
-        (i_h, i_w), (f_h, f_w) = self.shape, kernel_size
-        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1, stride[0]), range(f_h, i_h + 1, stride[0])) for k, l in zip(range(0, i_w - f_w + 1, stride[1]), range(f_w, i_w + 1, stride[1]))]
-        index = np.r_[tuple(new_filter)]
-
-        output = Tensor(
-            [(self[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)],
-            label="img2col",
-            children=(self,),
-        )
+        output._backward = backward
 
         return output
 
@@ -381,7 +359,6 @@ class Tensor:
         assert status, message
 
         stride = tuple([stride, stride]) if isinstance(stride, int) else stride
-
         filter = Tensor(filter) if (not isinstance(filter, Tensor)) else filter
         (i_h, i_w), (k_h, k_w) = self.shape, filter.shape
 
@@ -393,6 +370,47 @@ class Tensor:
         img2col_output = self.img2col(kernel_size=(k_h, k_w), stride=stride, padding=padding)
 
         return (img2col_output @ filter.flatten()).reshape((o_h, o_w))
+
+    def col2img(self, original_shape: tuple, kernel_size, stride: Union[int, tuple] = 1, padding=0):
+        data = self.data
+        convolution_count = data.shape[-1]
+
+        col_size = int(prod(kernel_size))
+        colwise = np.array([data[i] for i in range(0, col_size, 2)]).reshape(-1, floor(convolution_count / 2) * col_size)
+        tmp_colwise = np.array([data[i] for i in range(0, col_size, 2)]).reshape(-1, *kernel_size).reshape(-1, 2)
+        print("colwise ", tmp_colwise, tmp_colwise.shape, "\n\n", tmp_colwise[1], "\n--After unique--\n", np.unique(tmp_colwise, axis=0))
+        colwise_2 = np.array([data[i] for i in range(1, col_size, 2)]).reshape(-1, floor(convolution_count / 2) * col_size)
+        colwise_3 = np.array([colwise, colwise_2])
+
+        output = np.unique(colwise_3.reshape(-1)).reshape(original_shape)
+
+        def backward():
+            if self.require_grad:
+                self.grad += output.grad.img2col(kernel_size, stride)  # type: ignore
+
+        self._backward = backward()
+        return output
+
+    def img2col(self, kernel_size, stride: Union[int, tuple] = 1, padding=0):
+        stride = tuple([stride, stride]) if isinstance(stride, int) else stride
+        original_shape = self.shape
+
+        (i_h, i_w), (f_h, f_w) = self.shape, kernel_size
+        new_filter = [(slice(i, j), slice(k, l)) for i, j in zip(range(0, i_h - f_h + 1, stride[0]), range(f_h, i_h + 1, stride[0])) for k, l in zip(range(0, i_w - f_w + 1, stride[1]), range(f_w, i_w + 1, stride[1]))]
+        index = np.r_[tuple(new_filter)]
+
+        output = Tensor(
+            [(self[index[i], index[i + 1]]).flatten() for i in range(0, len(index), 2)],
+            label="img2col",
+            children=(self,),
+        )
+
+        def backward():
+            if self.require_grad:
+                self.grad += output.grad.col2img(original_shape, kernel_size, stride)  # type: ignore
+
+        self._backward = backward
+        return output
 
     @staticmethod
     def _sum_if_broadcasting_occured(x, y):
