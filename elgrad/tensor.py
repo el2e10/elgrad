@@ -3,7 +3,7 @@ from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
 
-from .helper import check_conv2d_stride_shape, get_indices_for_img_col_transformation
+from helper import check_conv2d_stride_shape, get_indices_for_img_col_transformation
 
 
 class BroadcastError(Exception):
@@ -372,31 +372,24 @@ class Tensor:
         return (img2col_output @ filter.flatten()).reshape((o_h, o_w))
 
     def col2img(self, original_shape: tuple, kernel_size, stride: Union[int, tuple] = 1, padding=0):
-        data = self.data
-        convolution_count = data.shape[-1]
+        output = Tensor.zeros(shape=original_shape, require_grad=False, label="col2img")  # Tensor.zeros(shape=(original_shape), require_grad=False)
 
-        col_size = int(prod(kernel_size))
-        colwise = np.array([data[i] for i in range(0, col_size, 2)]).reshape(-1, floor(convolution_count / 2) * col_size)
-        tmp_colwise = np.array([data[i] for i in range(0, col_size, 2)]).reshape(-1, *kernel_size).reshape(-1, 2)
-        print("colwise ", tmp_colwise, tmp_colwise.shape, "\n\n", tmp_colwise[1], "\n--After unique--\n", np.unique(tmp_colwise, axis=0))
-        colwise_2 = np.array([data[i] for i in range(1, col_size, 2)]).reshape(-1, floor(convolution_count / 2) * col_size)
-        colwise_3 = np.array([colwise, colwise_2])
+        i, j = get_indices_for_img_col_transformation(original_shape, kernel_size, stride, padding)
+        np.add.at(output.data, (i, j), self.data)
 
-        output = np.unique(colwise_3.reshape(-1)).reshape(original_shape)
-
-        def backward():
-            if self.require_grad:
-                self.grad += output.grad.img2col(kernel_size, stride)  # type: ignore
-
-        self._backward = backward()
+        # def backward():
+        #     if self.require_grad:
+        #         self.grad += output.grad.img2col(kernel_size, stride)  # type: ignore
+        #
+        # self._backward = backward()
         return output
 
     def img2col(self, kernel_size, stride: Union[int, tuple] = 1, padding=0):
         original_shape = self.shape
-        
+
         i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
-        output = Tensor(self[i, j],label="img2col",children=(self,))
-        
+        output = Tensor(self[i, j], label="img2col", children=(self,))
+
         def backward():
             if self.require_grad:
                 self.grad += output.grad.col2img(original_shape, kernel_size, stride)  # type: ignore
@@ -475,4 +468,8 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    pass
+    img = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True, label="img")
+    filter = Tensor([[1, 2], [3, 4]], require_grad=True, label="filter")
+    result = img.conv2d(filter)
+    sum = result.sum()
+    sum.backward()
