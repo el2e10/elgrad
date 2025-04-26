@@ -168,9 +168,7 @@ class TestMatLog:
             Tensor([[1.0, 0.5, 0.3333], [0.5, 0.3333, 0.25]]),
             Tensor([[2, 2, 2]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_four(self):
         a = Tensor([[1, 2, 3], [2, 3, 4]], require_grad=True)
@@ -181,9 +179,7 @@ class TestMatLog:
             Tensor([[1.0, 0.5, 0.3333], [0.5, 0.3333, 0.25]]),
             Tensor([2, 2, 2]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_five(self):
         a = Tensor([[1, 2, 3], [2, 3, 4]], require_grad=True)
@@ -194,9 +190,7 @@ class TestMatLog:
             Tensor([[1.0, 1.0, 1.0], [0.5, 0.6667, 0.75]]),
             Tensor([0.6931, 1.7918, 2.4849]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
 
 class TestMatPow:
@@ -213,9 +207,7 @@ class TestMatPow:
         a_grad, b_grad = self.mat_pow_grad(a, b)
         a_grad_expected = Tensor([2, 4, 6])
         b_grad_expected = Tensor([12.6601])
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_two(self):
         a = Tensor([1, 2, 3], require_grad=True)
@@ -226,9 +218,7 @@ class TestMatPow:
             Tensor([1, 4, 27]),
             Tensor([0, 2.7726, 29.6625]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_three(self):
         a = Tensor([[1, 2, 3], [1, 2, 3]], require_grad=True)
@@ -239,9 +229,7 @@ class TestMatPow:
             Tensor([[1, 4, 27], [1, 4, 27]]),
             Tensor([0, 5.5452, 59.3251]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_four(self):
         a = Tensor([[1, 2, 3], [1, 2, 3]], require_grad=True)
@@ -252,9 +240,7 @@ class TestMatPow:
             Tensor([[1, 4, 27], [2, 4, 108]]),
             Tensor([[0, 2.7726, 29.6625], [0, 2.7726, 88.9876]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_five(self):
         a = Tensor([[1, 2, 3], [1, 2, 3], [2, 2, 4]], require_grad=True)
@@ -272,9 +258,7 @@ class TestMatPow:
             Tensor([2.7183, 7.3891, 20.0855, 54.5982]),
             Tensor([108.9459]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
 
 class TestMatElemDiv:
@@ -298,9 +282,7 @@ class TestMatElemDiv:
             Tensor([1.0000, 0.5000, 0.3333]),
             Tensor([-1.0000, -0.5000, -0.3333]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_two(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
@@ -324,9 +306,7 @@ class TestMatElemDiv:
                 ]
             ),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_three(self):
         a = Tensor([[1, 2], [3, 4]], require_grad=True)
@@ -351,9 +331,7 @@ class TestMatElemDiv:
                 ]
             ),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_five(self):
         a = Tensor([1], require_grad=True)
@@ -371,9 +349,7 @@ class TestMatElemDiv:
                 ]
             ),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_six(self):
         a = 1
@@ -406,9 +382,7 @@ class TestMatElemMul:
         a_grad, b_grad = self.mat_elem_mul_grad(a, b)
         print(a_grad, b_grad)
         a_grad_expected, b_grad_expected = Tensor([4, 5, 6]), Tensor([1, 2, 3])
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_two(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
@@ -420,9 +394,7 @@ class TestMatElemMul:
             Tensor([[10, 20, 30], [40, 50, 60], [70, 80, 90]]),
             Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_three(self):
         a = Tensor([[1, 2], [3, 4]], require_grad=True)
@@ -441,9 +413,7 @@ class TestMatElemMul:
             Tensor([12, 15, 18]),
             Tensor([[1, 2, 3], [1, 2, 3], [1, 2, 3]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_five(self):
         a = Tensor([1], require_grad=True)
@@ -455,9 +425,7 @@ class TestMatElemMul:
             Tensor([45]),
             Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
 
 class TestMatAdd:
@@ -478,9 +446,7 @@ class TestMatAdd:
             Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
             Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_two(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
@@ -492,9 +458,7 @@ class TestMatAdd:
             Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
             Tensor([[3, 3, 3]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_three(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
@@ -506,9 +470,7 @@ class TestMatAdd:
             Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
             Tensor([3, 3, 3]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_four(self):
         a = Tensor([[1, 2, 3], [4, 5, 6]], require_grad=True)
@@ -520,9 +482,7 @@ class TestMatAdd:
             Tensor([[1, 1, 1], [1, 1, 1]]),
             Tensor([[3], [3]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
 
 class TestMatSub:
@@ -543,9 +503,7 @@ class TestMatSub:
             Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
             Tensor([[-1, -1, -1], [-1, -1, -1], [-1, -1, -1]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_two(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
@@ -557,9 +515,7 @@ class TestMatSub:
             Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
             Tensor([[-3, -3, -3]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_three(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
@@ -571,9 +527,7 @@ class TestMatSub:
             Tensor([[1, 1, 1], [1, 1, 1], [1, 1, 1]]),
             Tensor([-3, -3, -3]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_four(self):
         a = Tensor([[1, 2, 3], [4, 5, 6]], require_grad=True)
@@ -585,9 +539,7 @@ class TestMatSub:
             Tensor([[1, 1, 1], [1, 1, 1]]),
             Tensor([[-3], [-3]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
 
 class TestMatMul:
@@ -607,9 +559,7 @@ class TestMatMul:
             Tensor([[30, 90], [30, 90]]),
             Tensor([[5, 5], [7, 7]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_two(self):
         a = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True)
@@ -621,9 +571,7 @@ class TestMatMul:
             Tensor([[1, 2, 3], [1, 2, 3], [1, 2, 3]]),
             Tensor([12, 15, 18]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_three(self):
         a = Tensor([[1, 2, 3], [4, 5, 6]], require_grad=True)
@@ -635,9 +583,7 @@ class TestMatMul:
             Tensor([[44, 55, 66], [44, 55, 66]]),
             Tensor([5, 7, 9]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     #
     def test_four(self):
@@ -650,9 +596,7 @@ class TestMatMul:
             Tensor([[6, 66, 165], [6, 66, 165], [6, 66, 165]]),
             Tensor([[12, 12, 12], [15, 15, 15], [18, 18, 18]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     #
     def test_five(self):
@@ -665,9 +609,7 @@ class TestMatMul:
             Tensor([[34, 50], [34, 50], [34, 50]]),
             Tensor([[9, 9, 9, 9], [12, 12, 12, 12]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     #
     def test_six(self):
@@ -680,9 +622,7 @@ class TestMatMul:
             Tensor([[21], [21], [21], [21], [21]]),
             Tensor([[15, 15, 15]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_seven(self):
         a = Tensor([[1, 2], [3, 4], [5, 6], [7, 8]], require_grad=True)
@@ -694,9 +634,7 @@ class TestMatMul:
             Tensor([[9, 8], [9, 8], [9, 8], [9, 8]]),
             Tensor([16, 20]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_eight(self):
         a = Tensor([1, 2], require_grad=True)
@@ -711,54 +649,47 @@ class TestMatMul:
         a_grad, b_grad = self.matmul_grad(a, b)
         print("Actual value is ", a_grad, b_grad)
         a_grad_expected, b_grad_expected = (
-            Tensor([6., 7.]),
-            Tensor([[1., 1., 1.], [2., 2., 2.]]),
+            Tensor([6.0, 7.0]),
+            Tensor([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_ten(self):
-        a = Tensor([[[1., 2., 3], [1., 2, 3.]], [[2, 3, 4],[1, 2, 4]]], require_grad=True)
-        b = Tensor([1, 2., 4.], require_grad=True)
+        a = Tensor([[[1.0, 2.0, 3], [1.0, 2, 3.0]], [[2, 3, 4], [1, 2, 4]]], require_grad=True)
+        b = Tensor([1, 2.0, 4.0], require_grad=True)
 
         a_grad, b_grad = self.matmul_grad(a, b)
         print("Actual value is ", a_grad, b_grad)
         a_grad_expected, b_grad_expected = (
-            Tensor([[[1., 2., 4.], [1, 2, 4]], [[1, 2, 4], [1, 2, 4]]]),
-            Tensor([5., 9., 14.]),
+            Tensor([[[1.0, 2.0, 4.0], [1, 2, 4]], [[1, 2, 4], [1, 2, 4]]]),
+            Tensor([5.0, 9.0, 14.0]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_eleven(self):
-        a = Tensor([1, 2.], require_grad=True)
-        b = Tensor([[[1., 2., 3], [1., 2, 3.]], [[2, 3, 4],[1, 2, 4]]], require_grad=True)
+        a = Tensor([1, 2.0], require_grad=True)
+        b = Tensor([[[1.0, 2.0, 3], [1.0, 2, 3.0]], [[2, 3, 4], [1, 2, 4]]], require_grad=True)
 
         a_grad, b_grad = self.matmul_grad(a, b)
         print("Actual value is ", a_grad, b_grad)
         a_grad_expected, b_grad_expected = (
-            Tensor([15., 13.]),
-            Tensor([[[1., 1., 1.], [2, 2, 2]], [[1, 1, 1], [2, 2, 2]]]),
+            Tensor([15.0, 13.0]),
+            Tensor([[[1.0, 1.0, 1.0], [2, 2, 2]], [[1, 1, 1], [2, 2, 2]]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
 
     def test_twelve(self):
-        a = Tensor([[[1., 2.], [1., 2]], [[2, 3],[1, 2]]], require_grad=True)
-        b = Tensor([[[1., 2., 3], [1., 2, 3.]], [[2, 3, 4],[1, 2, 4]]], require_grad=True)
+        a = Tensor([[[1.0, 2.0], [1.0, 2]], [[2, 3], [1, 2]]], require_grad=True)
+        b = Tensor([[[1.0, 2.0, 3], [1.0, 2, 3.0]], [[2, 3, 4], [1, 2, 4]]], require_grad=True)
 
         a_grad, b_grad = self.matmul_grad(a, b)
         print("Actual value is ", a_grad, b_grad)
         a_grad_expected, b_grad_expected = (
             Tensor([[[6, 6], [6, 6]], [[9, 7], [9, 7]]]),
-            Tensor([[[2., 2., 2.], [4, 4, 4]], [[3, 3, 3], [5, 5, 5]]]),
+            Tensor([[[2.0, 2.0, 2.0], [4, 4, 4]], [[3, 3, 3], [5, 5, 5]]]),
         )
-        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(
-            b_grad, b_grad_expected
-        )
+        assert Tensor.array_equal(a_grad, a_grad_expected) and Tensor.array_equal(b_grad, b_grad_expected)
+
 
 class TestMean:
     def matmean_grad(self, x: Tensor, axis: Union[int, None] = None):
@@ -807,7 +738,7 @@ class TestSum:
         a_grad_expected = Tensor([[1, 1, 1], [1, 1, 1]])
 
         assert Tensor.array_equal(a_grad, a_grad_expected)
-        
+
     def test_two(self):
         a = Tensor([[1, 2, 3], [1, 2, 4]], require_grad=True)
         a_grad = self.mat_sum_grad(a, axis=1, keepdims=True)
@@ -819,7 +750,7 @@ class TestSum:
     def test_three(self):
         a = Tensor([[[1, 2, 3]], [[1, 2, 4]]], require_grad=True)
         a_grad = self.mat_sum_grad(a, axis=1, keepdims=False)
-        print(a_grad,  "end")
+        print(a_grad, "end")
         a_grad_expected = Tensor([[[1, 1, 1]], [[1, 1, 1]]])
 
         assert Tensor.array_equal(a_grad, a_grad_expected)
@@ -827,7 +758,7 @@ class TestSum:
     def test_four(self):
         a = Tensor([[[1, 2, 3]], [[1, 2, 4]]], require_grad=True)
         a_grad = self.mat_sum_grad(a, axis=2, keepdims=False)
-        print(a_grad,  "end")
+        print(a_grad, "end")
         a_grad_expected = Tensor([[[1, 1, 1]], [[1, 1, 1]]])
 
         assert Tensor.array_equal(a_grad, a_grad_expected)
@@ -835,12 +766,7 @@ class TestSum:
     def test_five(self):
         a = Tensor([[[1, 2, 3]], [[1, 2, 4]]], require_grad=True)
         a_grad = self.mat_sum_grad(a, axis=2, keepdims=True)
-        print(a_grad,  "end")
+        print(a_grad, "end")
         a_grad_expected = Tensor([[[1, 1, 1]], [[1, 1, 1]]])
 
         assert Tensor.array_equal(a_grad, a_grad_expected)
-
-
-
-
-

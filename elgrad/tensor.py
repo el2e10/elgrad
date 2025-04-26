@@ -201,14 +201,15 @@ class Tensor:
 
         def backward():
             output_grad = Tensor.expand_dims(output.grad, 1) if (output.grad.ndim == 1) else output.grad  # type: ignore
-            ne_other = Tensor.reshape(other, (other.shape[0], 1)) if (other.ndim == 1) else other
+            # ne_other = Tensor.reshape(other, (other.shape[0], 1)) if (other.ndim == 1) else other
+            ne_other = Tensor.expand_dims(other, 1) if (other.ndim == 1) else other
             self_data = Tensor.expand_dims(self.data, 0) if (self.data.ndim == 1) else self
 
             if self.require_grad:
                 self.grad += Tensor._sum_if_broadcasting_occured(output_grad @ ne_other.T(), self.grad).reshape(self.grad.shape)  # type: ignore
             if other.require_grad:
-                ne_other.grad += Tensor._sum_if_broadcasting_occured(self_data.T() @ output_grad, ne_other.grad)
-                other.grad = ne_other.grad.reshape(other.grad.shape)  # type: ignore
+                other.grad += Tensor._sum_if_broadcasting_occured(self_data.T() @ output_grad, ne_other.grad).reshape(other.grad.shape)  # type: ignore
+                print(other.grad.shape)
 
         output._backward = backward
 
@@ -218,12 +219,15 @@ class Tensor:
     def expand_dims(tensor, axis):
         # grad = None if(tensor.grad is None) else
         tensor = tensor if (isinstance(tensor, Tensor)) else Tensor(tensor)
-        return Tensor(
+        output = Tensor(
             np.expand_dims(tensor.data, axis=axis),
             label=tensor.label,
             require_grad=tensor.require_grad,
             children=tensor.children,
         )
+        if(tensor.require_grad):
+            output._backward=tensor._backward
+        return output
 
     def __rtruediv__(self, other):
         other = Tensor(other)
@@ -330,12 +334,12 @@ class Tensor:
 
     def flatten(self):
         data = self.data
-        output = Tensor(data.flatten(), children=(self,), label="flatten")
+        output = Tensor(data.ravel(), children=(self,), label="flatten")
         original_shape = self.shape
 
         def backward():
             if self.require_grad:
-                self.grad += output.grad.data.flatten(original_shape)  # type: ignore
+                self.grad += output.grad.reshape(original_shape)  # type: ignore
 
         output._backward = backward
 
@@ -343,7 +347,7 @@ class Tensor:
 
     def reshape(self, shape):
         data = self.data
-        output = Tensor(np.reshape(data, shape), children=(self,), label="reshape")
+        output = Tensor(data.reshape(shape), children=(self,), label="reshape")
         original_shape = self.shape
 
         def backward():
@@ -369,7 +373,7 @@ class Tensor:
 
         img2col_output = self.img2col(kernel_size=(k_h, k_w), stride=stride, padding=padding)
 
-        return (img2col_output @ filter.flatten()).reshape((o_h, o_w))
+        return (img2col_output @ filter.reshape(shape=(k_h * k_w, 1))).reshape((o_h, o_w))
 
     def col2img(self, original_shape: tuple, kernel_size, stride: Union[int, tuple] = 1, padding=0):
         output = Tensor.zeros(shape=original_shape, require_grad=False, label="col2img")  # Tensor.zeros(shape=(original_shape), require_grad=False)
@@ -464,12 +468,19 @@ class Tensor:
 
         for child in reversed(graph):
             if child.require_grad:
+                print(child.label)
                 child._backward()
+                # print(child)
 
 
 if __name__ == "__main__":
     img = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True, label="img")
     filter = Tensor([[1, 2], [3, 4]], require_grad=True, label="filter")
+    # filter = Tensor([[1], [2], [3]], require_grad=True, label="filter")
+
     result = img.conv2d(filter)
+    # result = img @ filter.flatten()
+    # result = img @ filter.reshape(shape=(3, 1))
     sum = result.sum()
     sum.backward()
+    print(img.grad.data, filter.grad.data)  # type: ignore
