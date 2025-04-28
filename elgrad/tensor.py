@@ -3,7 +3,7 @@ from typing import Union, List, Tuple
 
 import numpy as np  # type: ignore
 
-from helper import check_conv2d_stride_shape, get_indices_for_img_col_transformation
+from .helper import check_conv2d_stride_shape, get_indices_for_img_col_transformation
 
 
 class BroadcastError(Exception):
@@ -209,7 +209,6 @@ class Tensor:
                 self.grad += Tensor._sum_if_broadcasting_occured(output_grad @ ne_other.T(), self.grad).reshape(self.grad.shape)  # type: ignore
             if other.require_grad:
                 other.grad += Tensor._sum_if_broadcasting_occured(self_data.T() @ output_grad, ne_other.grad).reshape(other.grad.shape)  # type: ignore
-                print(other.grad.shape)
 
         output._backward = backward
 
@@ -358,28 +357,39 @@ class Tensor:
 
         return output
 
-    def conv2d(self, filter, stride=1, padding=0):
-        status, message = check_conv2d_stride_shape(self, filter, stride)
+    def conv2d(self, kernel, stride=1, padding=0):
+        status, message = check_conv2d_stride_shape(self, kernel, stride)
         assert status, message
 
         stride = tuple([stride, stride]) if isinstance(stride, int) else stride
-        filter = Tensor(filter) if (not isinstance(filter, Tensor)) else filter
-        (i_h, i_w), (k_h, k_w) = self.shape, filter.shape
+        kernel = Tensor(kernel) if (not isinstance(kernel, Tensor)) else kernel
+
+        '''
+        *_b -> batch size
+        *_c -> channel size
+        '''
+        (i_b, i_c, i_h, i_w), (k_b, k_c, k_h, k_w) = self.shape, kernel.shape
 
         o_h, o_w = (
             floor((i_h + (2 * padding) - k_h) / stride[0] + 1),
             floor((i_w + (2 * padding) - k_w) / stride[1] + 1),
         )
 
-        img2col_output = self.img2col(kernel_size=(k_h, k_w), stride=stride, padding=padding)
+        img2col_output = self.img2col(kernel_size=kernel.shape, stride=stride, padding=padding)
 
-        return (img2col_output @ filter.reshape(shape=(k_h * k_w, 1))).reshape((o_h, o_w))
+        return (img2col_output @ kernel.reshape(shape=(k_h * k_w, 1))).reshape((o_h, o_w))
 
     def col2img(self, original_shape: tuple, kernel_size, stride: Union[int, tuple] = 1, padding=0):
-        output = Tensor.zeros(shape=original_shape, require_grad=False, label="col2img")  # Tensor.zeros(shape=(original_shape), require_grad=False)
+        output = Tensor.zeros(shape=original_shape, require_grad=False, label="col2img")  
 
-        i, j = get_indices_for_img_col_transformation(original_shape, kernel_size, stride, padding)
-        np.add.at(output.data, (i, j), self.data)
+        c, i, j = get_indices_for_img_col_transformation(original_shape, kernel_size, stride, padding)
+        # print(c)
+        # print(i)
+        # print(j)
+        data_reshaped = np.array(np.hsplit(self.data, 1))
+        # print("Reshaped data\n", data_reshaped, original_shape, self.data)
+        print(self.data)
+        np.add.at(output.data, (slice(None), c, i, j), self.data)
 
         # def backward():
         #     if self.require_grad:
@@ -391,8 +401,8 @@ class Tensor:
     def img2col(self, kernel_size, stride: Union[int, tuple] = 1, padding=0):
         original_shape = self.shape
 
-        i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
-        output = Tensor(self[i, j], label="img2col", children=(self,))
+        c, i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
+        output = Tensor(self[:, c, i, j], label="img2col", children=(self,))
 
         def backward():
             if self.require_grad:
@@ -468,19 +478,8 @@ class Tensor:
 
         for child in reversed(graph):
             if child.require_grad:
-                print(child.label)
                 child._backward()
-                # print(child)
 
 
 if __name__ == "__main__":
-    img = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True, label="img")
-    filter = Tensor([[1, 2], [3, 4]], require_grad=True, label="filter")
-    # filter = Tensor([[1], [2], [3]], require_grad=True, label="filter")
-
-    result = img.conv2d(filter)
-    # result = img @ filter.flatten()
-    # result = img @ filter.reshape(shape=(3, 1))
-    sum = result.sum()
-    sum.backward()
-    print(img.grad.data, filter.grad.data)  # type: ignore
+    pass
