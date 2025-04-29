@@ -224,8 +224,8 @@ class Tensor:
             require_grad=tensor.require_grad,
             children=tensor.children,
         )
-        if(tensor.require_grad):
-            output._backward=tensor._backward
+        if tensor.require_grad:
+            output._backward = tensor._backward
         return output
 
     def __rtruediv__(self, other):
@@ -357,17 +357,17 @@ class Tensor:
 
         return output
 
-    def conv2d(self, kernel, stride=1, padding=0):
+    def conv2d(self, kernel, stride:Union[int, tuple]=1, padding=0):
         status, message = check_conv2d_stride_shape(self, kernel, stride)
         assert status, message
 
         stride = tuple([stride, stride]) if isinstance(stride, int) else stride
         kernel = Tensor(kernel) if (not isinstance(kernel, Tensor)) else kernel
 
-        '''
+        """
         *_b -> batch size
         *_c -> channel size
-        '''
+        """
         (i_b, i_c, i_h, i_w), (k_b, k_c, k_h, k_w) = self.shape, kernel.shape
 
         o_h, o_w = (
@@ -377,19 +377,14 @@ class Tensor:
 
         img2col_output = self.img2col(kernel_size=kernel.shape, stride=stride, padding=padding)
 
-        return (img2col_output @ kernel.reshape(shape=(k_h * k_w, 1))).reshape((o_h, o_w))
+        return (img2col_output @ kernel.reshape(shape=(k_h * k_w, 1))).reshape(shape=(i_b, i_c, o_h, o_w))
 
     def col2img(self, original_shape: tuple, kernel_size, stride: Union[int, tuple] = 1, padding=0):
-        output = Tensor.zeros(shape=original_shape, require_grad=False, label="col2img")  
+        output = Tensor.zeros(shape=original_shape, require_grad=False, label="col2img")
 
         c, i, j = get_indices_for_img_col_transformation(original_shape, kernel_size, stride, padding)
-        # print(c)
-        # print(i)
-        # print(j)
         data_reshaped = np.array(np.hsplit(self.data, 1))
-        # print("Reshaped data\n", data_reshaped, original_shape, self.data)
-        print(self.data)
-        np.add.at(output.data, (slice(None), c, i, j), self.data)
+        np.add.at(output.data, (slice(None), c, i, j), self.data)  # type: ignore
 
         # def backward():
         #     if self.require_grad:
@@ -402,7 +397,9 @@ class Tensor:
         original_shape = self.shape
 
         c, i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
-        output = Tensor(self[:, c, i, j], label="img2col", children=(self,))
+        # locations = Tensor(self[:, c, i, j], label="img2col", children=(self,))
+        locations = np.concatenate(self.data[:, c, i, j], axis=-1)
+        output = Tensor(locations, label="img2col", children=(self,))
 
         def backward():
             if self.require_grad:
