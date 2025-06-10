@@ -3,6 +3,7 @@
 **/data/**
 *.ipynb
 *.npy
+np_test.py
 
 ### macOS ###
 # General

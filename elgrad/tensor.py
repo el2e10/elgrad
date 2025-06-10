@@ -357,7 +357,39 @@ class Tensor:
 
         return output
 
-    def conv2d(self, kernel, stride:Union[int, tuple]=1, padding=0):
+    def max(self, axis, keepdims=False):
+        pass
+
+    def max_pooling(self, kernel_size: tuple, stride: Union[int, tuple] = 1, padding=0):
+        input_shape = self.shape
+        stride = tuple([stride, stride]) if isinstance(stride, int) else stride
+
+        img2col_output = self.img2col(kernel_size=kernel_size, require_grad=True)
+        output_location = np.argmax(img2col_output.data, axis=1, keepdims=False)
+        output_height, output_width = floor(((input_shape[-2] - kernel_size[-2]) / stride[0]) + 1), floor(((input_shape[-1] - kernel_size[-1]) / stride[1]) + 1)
+
+        output_data = np.max(img2col_output.data, axis=1, keepdims=True).reshape((input_shape[0], input_shape[1], output_height, output_width))
+
+        output = Tensor(output_data, children=(self,), label="max pooling", require_grad=True)
+
+        def backward():
+            if self.require_grad:
+                c, i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
+                c_full, i_full, j_full = [], [], []
+                for index, (c1, i1, j1) in enumerate(zip(c, i, j)):
+                    location = output_location[index]
+
+                    c_full.append(c1[location])
+                    i_full.append(i1[location])
+                    j_full.append(j1[location])
+
+                np.add.at(self.grad.data, (slice(None), np.array(c_full), np.array(i_full), np.array(j_full)), 1) #type: ignore
+
+        output._backward = backward
+
+        return output
+
+    def conv2d(self, kernel, stride: Union[int, tuple] = 1, padding=0):
         status, message = check_conv2d_stride_shape(self, kernel, stride)
         assert status, message
 
@@ -383,23 +415,16 @@ class Tensor:
         output = Tensor.zeros(shape=original_shape, require_grad=False, label="col2img")
 
         c, i, j = get_indices_for_img_col_transformation(original_shape, kernel_size, stride, padding)
-        data_reshaped = np.array(np.hsplit(self.data, 1))
         np.add.at(output.data, (slice(None), c, i, j), self.data)  # type: ignore
 
-        # def backward():
-        #     if self.require_grad:
-        #         self.grad += output.grad.img2col(kernel_size, stride)  # type: ignore
-        #
-        # self._backward = backward()
         return output
 
-    def img2col(self, kernel_size, stride: Union[int, tuple] = 1, padding=0):
+    def img2col(self, kernel_size, stride: Union[int, tuple] = 1, padding=0, require_grad=True):
         original_shape = self.shape
 
         c, i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
-        # locations = Tensor(self[:, c, i, j], label="img2col", children=(self,))
         locations = np.concatenate(self.data[:, c, i, j], axis=-1)
-        output = Tensor(locations, label="img2col", children=(self,))
+        output = Tensor(locations, label="img2col", children=(self,), require_grad=require_grad)
 
         def backward():
             if self.require_grad:
@@ -479,4 +504,9 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    pass
+    img = Tensor([[4, 2, 3], [9, 5, 6], [7, 2, 9]], require_grad=True, label="img").reshape(shape=(1, 1, 3, 3))
+    result = img.max_pooling((1, 1, 2, 2), (1, 1))
+    sum = result.sum()
+    sum.backward()
+    # print(result)
+    # print(img)

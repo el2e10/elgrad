@@ -8,7 +8,7 @@ from elgrad import Tensor, BroadcastError  # type: ignore
 
 
 class TestConv2d:
-    def _convolution(self, img: Tensor, filter: Tensor, stride: Union[int, tuple]=1):
+    def _convolution(self, img: Tensor, filter: Tensor, stride: Union[int, tuple] = 1):
         result = img.conv2d(filter, stride=stride)
         sum = result.sum()
         sum.backward()
@@ -79,4 +79,20 @@ class TestConv2d:
         filter_grad_expected = Tensor([[[[36, 42], [60, 66]]]])
 
         assert Tensor.array_equal(result, conv_expected) and Tensor.array_equal(img_grad_expected, img_grad) and Tensor.array_equal(filter_grad, filter_grad_expected)
+
+
+class TestMaxPooling:
+
+    def _max_pooling(self, input:Tensor, filter_shape: tuple, stride: tuple):
+        pooling_result = input.max_pooling(filter_shape, stride)
+        sum_result = pooling_result.sum()
+        sum_result.backward()
+
+        return pooling_result, input.grad
+
+
+    def test_one(self):
+        img = Tensor([[4, 2, 3], [9, 5, 6], [1, 1, 1]], require_grad=True, label="img").reshape(shape=(1, 1, 3, 3))
+        pooling_result, grad = self._max_pooling(img, (1, 1, 2, 2), (1, 1))
+        print(pooling_result, grad)
 
