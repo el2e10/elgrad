@@ -375,15 +375,9 @@ class Tensor:
         def backward():
             if self.require_grad:
                 c, i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
-                c_full, i_full, j_full = [], [], []
-                for index, (c1, i1, j1) in enumerate(zip(c, i, j)):
-                    location = output_location[index]
-
-                    c_full.append(c1[location])
-                    i_full.append(i1[location])
-                    j_full.append(j1[location])
-
-                np.add.at(self.grad.data, (slice(None), np.array(c_full), np.array(i_full), np.array(j_full)), 1) #type: ignore
+                rows = np.arange(c.shape[0])
+                c_full, i_full, j_full = c[rows, output_location], i[rows, output_location], j[rows, output_location]
+                np.add.at(self.grad.data, (slice(None), np.array(c_full), np.array(i_full), np.array(j_full)), 1)  # type: ignore
 
         output._backward = backward
 
