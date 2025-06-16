@@ -16,8 +16,8 @@ def check_conv2d_stride_shape(inputr, filter, stride: Union[int, Tuple[int]]) ->
 
 def get_indices_for_img_col_transformation(input_shape: tuple, kernel_shape: tuple, stride, padding):
     stride = tuple([stride, stride]) if isinstance(stride, int) else stride
-    i_b, i_c, i_h, i_w = input_shape
-    k_b, k_c, k_h, k_w = kernel_shape
+    _, i_c, i_h, i_w = input_shape
+    _, _, k_h, k_w = kernel_shape
 
     o_h, o_w = (
         floor((i_h + (2 * padding) - k_h) / stride[0] + 1),
@@ -28,22 +28,24 @@ def get_indices_for_img_col_transformation(input_shape: tuple, kernel_shape: tup
     first = np.arange(k_h)
     level_1 = np.tile(np.repeat(first, k_w), i_c)
     every_level = stride[0] * np.repeat(np.arange(o_h), o_w)
-    i = level_1 + every_level.reshape((-1, 1))
+    i = level_1.reshape(-1, 1) + every_level.reshape((1, -1))
 
     # Getting j
-    level_1 = np.repeat(np.tile(np.arange(k_w), k_h), i_c)
+    slide_1 = np.tile(np.tile(np.arange(k_w), k_h), i_c)
     every_slide = stride[1] * np.tile(np.arange(o_w), o_h)
-    j = level_1 + every_slide.reshape((-1, 1))
+    j = slide_1.reshape(-1, 1) + every_slide.reshape(1, -1)
 
-    # Getting c
-    c = np.tile(np.repeat(np.arange(i_c), k_h * k_w), o_h * o_w).reshape((-1, k_h * k_w * i_c))
+    # # Getting c
+    c = np.repeat(np.arange(i_c), k_h * k_w).reshape(-1, 1)
 
     return c, i, j
 
 
 if __name__ == "__main__":
-    input = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]).reshape((1, 1, 4, 3))
-    kernel = np.array([[1, 2], [3, 4]]).reshape((1, 1, 2, 2))
+    img = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3], [4, 5, 6], [7, 8, 9]]).reshape((1, 2, 3, 3))
+    kernel = np.array([[[1, 2], [3, 4]], [[1, 2], [3, 4]]]).reshape((1, 2, 2, 2))
 
-    c, i, j = get_indices_for_img_col_transformation(input.shape, kernel.shape, 1, 0)
-    location = input[:, c, i, j]
+    c, i, j = get_indices_for_img_col_transformation(img.shape, kernel.shape, 1, 0)
+    print(i, j, c)
+    location = img[:, c, i, j]
+    # print(i)

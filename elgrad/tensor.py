@@ -364,11 +364,14 @@ class Tensor:
         input_shape = self.shape
         stride = tuple([stride, stride]) if isinstance(stride, int) else stride
 
-        img2col_output = self.img2col(kernel_size=kernel_size, require_grad=True)
+        img2col_output = self.img2col(kernel_size=kernel_size, require_grad=True, stride=stride)
         output_location = np.argmax(img2col_output.data, axis=1, keepdims=False)
         output_height, output_width = floor(((input_shape[-2] - kernel_size[-2]) / stride[0]) + 1), floor(((input_shape[-1] - kernel_size[-1]) / stride[1]) + 1)
 
-        output_data = np.max(img2col_output.data, axis=1, keepdims=True).reshape((input_shape[0], input_shape[1], output_height, output_width))
+        # print(img2col_output)
+        output_data = np.max(img2col_output.data, axis=1, keepdims=True)
+        # print(output_data)
+        # output_data = output_data.reshape((input_shape[0], input_shape[1], output_height, output_width))
 
         output = Tensor(output_data, children=(self,), label="max pooling", require_grad=True)
 
@@ -403,7 +406,8 @@ class Tensor:
 
         img2col_output = self.img2col(kernel_size=kernel.shape, stride=stride, padding=padding)
 
-        return (img2col_output @ kernel.reshape(shape=(k_h * k_w, 1))).reshape(shape=(i_b, i_c, o_h, o_w))
+        print(i_b, i_c, o_h, o_w)
+        return (kernel.reshape(shape=(k_b, -1)) @ img2col_output).reshape(shape=(i_b, k_b, o_h, o_w))
 
     def col2img(self, original_shape: tuple, kernel_size, stride: Union[int, tuple] = 1, padding=0):
         output = Tensor.zeros(shape=original_shape, require_grad=False, label="col2img")
@@ -418,6 +422,7 @@ class Tensor:
 
         c, i, j = get_indices_for_img_col_transformation(self.shape, kernel_size, stride, padding)
         locations = np.concatenate(self.data[:, c, i, j], axis=-1)
+        # print(i, "\n", j)
         output = Tensor(locations, label="img2col", children=(self,), require_grad=require_grad)
 
         def backward():
@@ -498,9 +503,10 @@ class Tensor:
 
 
 if __name__ == "__main__":
-    img = Tensor([[4, 2, 3], [9, 5, 6], [7, 2, 9]], require_grad=True, label="img").reshape(shape=(1, 1, 3, 3))
-    result = img.max_pooling((1, 1, 2, 2), (1, 1))
+    img = Tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9], [1, 2, 3], [4, 5, 6], [7, 8, 9]], require_grad=True).reshape(shape=(1, 2, 3, 3))
+    filter = Tensor([[1, 2], [3, 4], [1, 2], [3, 4]], require_grad=True).reshape(shape=(1, 2, 2, 2))
+    result = img.conv2d(filter, stride=1)
     sum = result.sum()
     sum.backward()
-    # print(result)
-    # print(img)
+
+    print(result, img.grad, filter.grad)
